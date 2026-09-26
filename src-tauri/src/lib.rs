@@ -4,8 +4,10 @@ mod git;
 mod github;
 mod keepawake;
 mod terminal;
+mod tray;
 
 use keepawake::KeepAwakeState;
+use tauri::WindowEvent;
 use terminal::TerminalRegistry;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -21,7 +23,16 @@ pub fn run() {
         .setup(|app| {
             let menu = app_menu::build(app.handle())?;
             app.set_menu(menu)?;
+            tray::build(app.handle())?;
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() == "main" {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             terminal::terminal_spawn,
