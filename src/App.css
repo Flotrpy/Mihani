@@ -958,6 +958,54 @@
   cursor: not-allowed;
 }
 
+.commit-history-section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--mh-border);
+}
+
+.commit-history-empty {
+  font-size: 12px;
+  color: var(--mh-text-muted);
+  margin-top: 6px;
+}
+
+.commit-history-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.commit-history-item {
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  border-radius: 6px;
+}
+
+.commit-history-item:hover {
+  background: var(--mh-accent-soft);
+}
+
+.commit-history-oid {
+  font-size: 10px;
+  color: var(--mh-accent);
+}
+
+.commit-history-summary {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commit-history-meta {
+  font-size: 10.5px;
+  color: var(--mh-text-muted);
+}
+
 .git-action-error {
   margin-top: 6px;
   font-size: 11.5px;

@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { DiffViewer } from "./DiffViewer";
 import { BranchSwitcher } from "./BranchSwitcher";
 import { CreatePullRequest } from "./CreatePullRequest";
+import { CommitHistory } from "./CommitHistory";
 
 interface GitFileStatus {
   path: string;
@@ -36,6 +37,7 @@ export function GitStatusPanel({ path }: { path: string }) {
   const [branchRefreshKey, setBranchRefreshKey] = useState(0);
   const [discardTarget, setDiscardTarget] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [showHistory, setShowHistory] = useState(false);
   const knownPathsRef = useRef<Set<string>>(new Set());
 
   const refresh = () => {
@@ -222,6 +224,12 @@ export function GitStatusPanel({ path }: { path: string }) {
           onClose={() => setShowCreatePr(false)}
         />
       )}
+      <div className="commit-history-section">
+        <button className="sidebar-manage-btn" onClick={() => setShowHistory((v) => !v)}>
+          {showHistory ? "Hide history" : "Show history"}
+        </button>
+        {showHistory && <CommitHistory path={path} refreshKey={branchRefreshKey} />}
+      </div>
     </div>
   );
 }

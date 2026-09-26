@@ -210,6 +210,42 @@ pub fn git_discard_file(path: String, file: String) -> Result<(), String> {
 }
 
 #[derive(Serialize)]
+pub struct GitLogEntry {
+    pub oid: String,
+    pub short_oid: String,
+    pub summary: String,
+    pub author: String,
+    pub timestamp: i64,
+}
+
+#[tauri::command]
+pub fn git_log(path: String, limit: usize) -> Result<Vec<GitLogEntry>, String> {
+    let repo = Repository::discover(&path).map_err(|e| e.to_string())?;
+    let mut revwalk = repo.revwalk().map_err(|e| e.to_string())?;
+
+    if revwalk.push_head().is_err() {
+        // No commits yet.
+        return Ok(vec![]);
+    }
+
+    revwalk
+        .take(limit)
+        .map(|oid| {
+            let oid = oid.map_err(|e| e.to_string())?;
+            let commit = repo.find_commit(oid).map_err(|e| e.to_string())?;
+            let author_name = commit.author().name().unwrap_or("unknown").to_string();
+            Ok(GitLogEntry {
+                oid: oid.to_string(),
+                short_oid: oid.to_string()[..7.min(oid.to_string().len())].to_string(),
+                summary: commit.summary().unwrap_or("").to_string(),
+                author: author_name,
+                timestamp: commit.time().seconds(),
+            })
+        })
+        .collect()
+}
+
+#[derive(Serialize)]
 pub struct GitBranch {
     pub name: String,
     pub is_head: bool,
@@ -453,6 +489,37 @@ mod tests {
         let contents = std::fs::read_to_string(dir.join("README.md")).unwrap();
         assert_eq!(contents, "original");
 
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn git_log_returns_commits_newest_first() {
+        let dir = tempfile_dir();
+        let repo = Repository::init(&dir).unwrap();
+        let mut config = repo.config().unwrap();
+        config.set_str("user.name", "Test").unwrap();
+        config.set_str("user.email", "test@example.com").unwrap();
+
+        std::fs::write(dir.join("a.txt"), "a").unwrap();
+        git_commit(dir.to_string_lossy().to_string(), "first".into(), None).unwrap();
+        std::fs::write(dir.join("b.txt"), "b").unwrap();
+        git_commit(dir.to_string_lossy().to_string(), "second".into(), None).unwrap();
+
+        let log = git_log(dir.to_string_lossy().to_string(), 10).unwrap();
+        assert_eq!(log.len(), 2);
+        assert_eq!(log[0].summary, "second");
+        assert_eq!(log[1].summary, "first");
+        assert_eq!(log[0].short_oid.len(), 7);
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn git_log_on_empty_repo_returns_empty() {
+        let dir = tempfile_dir();
+        Repository::init(&dir).unwrap();
+        let log = git_log(dir.to_string_lossy().to_string(), 10).unwrap();
+        assert!(log.is_empty());
         std::fs::remove_dir_all(&dir).ok();
     }
 
