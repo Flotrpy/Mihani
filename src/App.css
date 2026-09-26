@@ -342,12 +342,6 @@
   padding: 1px 4px;
 }
 
-.agent-item-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
 .agent-remove-btn {
   border: none;
   background: transparent;
@@ -389,20 +383,6 @@
   padding: 5px 10px;
   font-size: 12px;
   cursor: pointer;
-}
-
-.agent-add-btn {
-  margin-top: 6px;
-  border: none;
-  background: transparent;
-  color: var(--mh-text-muted);
-  font-size: 11px;
-  cursor: pointer;
-  padding: 2px 0;
-}
-
-.agent-add-btn:hover {
-  color: var(--mh-accent);
 }
 
 .trust-dialog {
