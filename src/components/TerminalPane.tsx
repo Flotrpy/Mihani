@@ -18,6 +18,7 @@ interface TerminalExitEvent {
 interface TerminalPaneProps {
   cwd?: string;
   theme: "light" | "dark";
+  initialCommand?: string;
 }
 
 const XTERM_THEMES = {
@@ -35,7 +36,7 @@ const XTERM_THEMES = {
   },
 };
 
-export function TerminalPane({ cwd, theme }: TerminalPaneProps) {
+export function TerminalPane({ cwd, theme, initialCommand }: TerminalPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -68,6 +69,7 @@ export function TerminalPane({ cwd, theme }: TerminalPaneProps) {
         cwd: cwd ?? null,
         cols: term.cols,
         rows: term.rows,
+        initialCommand: initialCommand ?? null,
       });
       if (disposed) return;
       sessionIdRef.current = id;

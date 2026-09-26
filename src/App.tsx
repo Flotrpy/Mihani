@@ -1,12 +1,19 @@
+import { useRef } from "react";
 import { useTheme } from "./hooks/useTheme";
 import { useWorkspace } from "./hooks/useWorkspace";
-import { TerminalTabs } from "./components/TerminalTabs";
+import { TerminalTabs, type TerminalTabsHandle } from "./components/TerminalTabs";
 import { GitStatusPanel } from "./components/GitStatusPanel";
+import { AgentLauncher, type AgentDefinition } from "./components/AgentLauncher";
 import "./App.css";
 
 function App() {
   const { theme, toggleTheme } = useTheme();
   const { path, recents, loaded, openFolder, selectPath } = useWorkspace();
+  const terminalTabsRef = useRef<TerminalTabsHandle>(null);
+
+  const launchAgent = (agent: AgentDefinition) => {
+    terminalTabsRef.current?.openTab(agent.name, agent.command);
+  };
 
   return (
     <div className="app-shell">
@@ -36,6 +43,7 @@ function App() {
               </ul>
             )}
           </div>
+          <AgentLauncher onLaunch={launchAgent} />
           {path && (
             <>
               <div className="sidebar-section-title">Source Control</div>
@@ -44,7 +52,7 @@ function App() {
           )}
         </aside>
         <main className="app-main">
-          {loaded && <TerminalTabs cwd={path ?? undefined} theme={theme} />}
+          {loaded && <TerminalTabs ref={terminalTabsRef} cwd={path ?? undefined} theme={theme} />}
         </main>
       </div>
     </div>

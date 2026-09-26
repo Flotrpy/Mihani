@@ -1,3 +1,4 @@
+mod agents;
 mod git;
 mod terminal;
 
@@ -16,6 +17,7 @@ pub fn run() {
             terminal::terminal_resize,
             terminal::terminal_kill,
             git::git_status,
+            agents::list_agents,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

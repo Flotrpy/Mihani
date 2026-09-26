@@ -49,6 +49,7 @@ pub fn terminal_spawn(
     cwd: Option<String>,
     cols: u16,
     rows: u16,
+    initial_command: Option<String>,
 ) -> Result<String, String> {
     let id = uuid::Uuid::new_v4().to_string();
 
@@ -79,7 +80,11 @@ pub fn terminal_spawn(
         .master
         .try_clone_reader()
         .map_err(|e| e.to_string())?;
-    let writer = pair.master.take_writer().map_err(|e| e.to_string())?;
+    let mut writer = pair.master.take_writer().map_err(|e| e.to_string())?;
+
+    if let Some(command) = initial_command {
+        let _ = writer.write_all(format!("{command}\r").as_bytes());
+    }
 
     let (kill_tx, kill_rx) = channel::<()>();
 
