@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { DiffViewer } from "./DiffViewer";
 import { BranchSwitcher } from "./BranchSwitcher";
@@ -35,12 +35,23 @@ export function GitStatusPanel({ path }: { path: string }) {
   const [showCreatePr, setShowCreatePr] = useState(false);
   const [branchRefreshKey, setBranchRefreshKey] = useState(0);
   const [discardTarget, setDiscardTarget] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const knownPathsRef = useRef<Set<string>>(new Set());
 
   const refresh = () => {
     invoke<GitRepoStatus>("git_status", { path })
       .then((result) => {
         setStatus(result);
         setError(null);
+        setSelected((prev) => {
+          const next = new Set<string>();
+          for (const f of result.files) {
+            const isNew = !knownPathsRef.current.has(f.path);
+            if (isNew || prev.has(f.path)) next.add(f.path);
+          }
+          knownPathsRef.current = new Set(result.files.map((f) => f.path));
+          return next;
+        });
       })
       .catch((err) => setError(String(err)));
   };
@@ -74,11 +85,28 @@ export function GitStatusPanel({ path }: { path: string }) {
   };
 
   const handleCommit = () => {
-    if (!message.trim()) return;
+    if (!message.trim() || selected.size === 0) return;
     runAction(async () => {
-      await invoke("git_commit", { path, message });
+      await invoke("git_commit", { path, message, files: Array.from(selected) });
       setMessage("");
     });
+  };
+
+  const toggleSelected = (file: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(file)) next.delete(file);
+      else next.add(file);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    setSelected((prev) =>
+      status && prev.size === status.files.length
+        ? new Set()
+        : new Set(status?.files.map((f) => f.path)),
+    );
   };
 
   if (error) {
@@ -101,6 +129,16 @@ export function GitStatusPanel({ path }: { path: string }) {
         )}
       </div>
       <BranchSwitcher path={path} refreshKey={branchRefreshKey} />
+      {status.files.length > 0 && (
+        <label className="git-select-all">
+          <input
+            type="checkbox"
+            checked={selected.size === status.files.length}
+            onChange={toggleSelectAll}
+          />
+          {selected.size} / {status.files.length} staged for commit
+        </label>
+      )}
       <ul className="git-file-list">
         {status.files.length === 0 && (
           <li className="git-file-empty">Working tree clean</li>
@@ -111,6 +149,12 @@ export function GitStatusPanel({ path }: { path: string }) {
             className={`git-file git-file-${file.status}`}
             onClick={() => setDiffFile(file.path)}
           >
+            <input
+              type="checkbox"
+              checked={selected.has(file.path)}
+              onChange={() => toggleSelected(file.path)}
+              onClick={(e) => e.stopPropagation()}
+            />
             <span className="git-file-badge">{STATUS_LABEL[file.status] ?? "?"}</span>
             <span className="git-file-path">{file.path}</span>
             <button
@@ -154,10 +198,10 @@ export function GitStatusPanel({ path }: { path: string }) {
         />
         <div className="git-action-row">
           <button
-            disabled={busy || !message.trim() || status.files.length === 0}
+            disabled={busy || !message.trim() || selected.size === 0}
             onClick={handleCommit}
           >
-            Commit
+            Commit ({selected.size})
           </button>
           <button disabled={busy} onClick={() => runAction(() => invoke("git_pull", { path }))}>
             Pull

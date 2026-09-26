@@ -838,6 +838,16 @@
   font-size: 12.5px;
 }
 
+.git-select-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--mh-text-muted);
+  margin-bottom: 6px;
+  cursor: pointer;
+}
+
 .git-file {
   display: flex;
   align-items: center;

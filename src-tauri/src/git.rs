@@ -123,17 +123,18 @@ pub fn git_diff(path: String, file: String) -> Result<String, String> {
     Ok(buf)
 }
 
-/// Stages every pending change (new/modified/deleted, including untracked)
-/// and creates a commit on HEAD with the given message.
+/// Stages the given files (or every pending change, new/modified/deleted,
+/// including untracked, if `files` is None) and creates a commit on HEAD.
 #[tauri::command]
-pub fn git_commit(path: String, message: String) -> Result<String, String> {
+pub fn git_commit(path: String, message: String, files: Option<Vec<String>>) -> Result<String, String> {
     let repo = Repository::discover(&path).map_err(|e| e.to_string())?;
 
     let mut index = repo.index().map_err(|e| e.to_string())?;
+    let pathspecs = files.unwrap_or_else(|| vec!["*".to_string()]);
     index
-        .add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, None)
+        .add_all(pathspecs.iter(), git2::IndexAddOption::DEFAULT, None)
         .map_err(|e| e.to_string())?;
-    index.update_all(["*"].iter(), None).map_err(|e| e.to_string())?;
+    index.update_all(pathspecs.iter(), None).map_err(|e| e.to_string())?;
     index.write().map_err(|e| e.to_string())?;
 
     let tree_oid = index.write_tree().map_err(|e| e.to_string())?;
@@ -331,7 +332,7 @@ mod tests {
         config.set_str("user.email", "test@example.com").unwrap();
         std::fs::write(dir.join("README.md"), "hello").unwrap();
 
-        let oid = git_commit(dir.to_string_lossy().to_string(), "initial commit".into())
+        let oid = git_commit(dir.to_string_lossy().to_string(), "initial commit".into(), None)
             .unwrap();
         assert_eq!(oid.len(), 40);
 
@@ -340,6 +341,30 @@ mod tests {
 
         let head_commit = repo.head().unwrap().peel_to_commit().unwrap();
         assert_eq!(head_commit.message().unwrap(), "initial commit");
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn git_commit_with_selected_files_leaves_others_unstaged() {
+        let dir = tempfile_dir();
+        let repo = Repository::init(&dir).unwrap();
+        let mut config = repo.config().unwrap();
+        config.set_str("user.name", "Test").unwrap();
+        config.set_str("user.email", "test@example.com").unwrap();
+        std::fs::write(dir.join("a.txt"), "a").unwrap();
+        std::fs::write(dir.join("b.txt"), "b").unwrap();
+
+        git_commit(
+            dir.to_string_lossy().to_string(),
+            "only a".into(),
+            Some(vec!["a.txt".to_string()]),
+        )
+        .unwrap();
+
+        let status = git_status(dir.to_string_lossy().to_string()).unwrap();
+        assert_eq!(status.files.len(), 1);
+        assert_eq!(status.files[0].path, "b.txt");
 
         std::fs::remove_dir_all(&dir).ok();
     }
@@ -386,7 +411,7 @@ mod tests {
         config.set_str("user.name", "Test").unwrap();
         config.set_str("user.email", "test@example.com").unwrap();
         std::fs::write(dir.join("README.md"), "hello").unwrap();
-        git_commit(dir.to_string_lossy().to_string(), "init".into()).unwrap();
+        git_commit(dir.to_string_lossy().to_string(), "init".into(), None).unwrap();
 
         let branches = git_list_branches(dir.to_string_lossy().to_string()).unwrap();
         assert_eq!(branches.len(), 1);
@@ -420,7 +445,7 @@ mod tests {
         config.set_str("user.name", "Test").unwrap();
         config.set_str("user.email", "test@example.com").unwrap();
         std::fs::write(dir.join("README.md"), "original").unwrap();
-        git_commit(dir.to_string_lossy().to_string(), "init".into()).unwrap();
+        git_commit(dir.to_string_lossy().to_string(), "init".into(), None).unwrap();
 
         std::fs::write(dir.join("README.md"), "changed").unwrap();
         git_discard_file(dir.to_string_lossy().to_string(), "README.md".into()).unwrap();
