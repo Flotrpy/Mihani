@@ -684,6 +684,74 @@
   padding: 0 2px;
 }
 
+.terminal-tab-hide {
+  border: none;
+  background: transparent;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.terminal-tab-hide:hover {
+  opacity: 1;
+}
+
+.terminal-tabbar-spacer {
+  flex: 1;
+}
+
+.background-tasks {
+  position: relative;
+}
+
+.background-tasks-btn {
+  border: 1px solid var(--mh-border);
+  background: var(--mh-surface-raised);
+  color: var(--mh-text-muted);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  cursor: pointer;
+  margin-right: 6px;
+}
+
+.background-tasks-btn:hover {
+  color: var(--mh-accent);
+  border-color: var(--mh-accent);
+}
+
+.background-tasks-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 6px;
+  min-width: 180px;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  background: var(--mh-surface);
+  border: 1px solid var(--mh-border);
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+  z-index: 50;
+}
+
+.background-tasks-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.background-tasks-list li:hover {
+  background: var(--mh-accent-soft);
+}
+
 .terminal-tab-add {
   border: none;
   background: transparent;

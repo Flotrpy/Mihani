@@ -16,6 +16,7 @@ interface TabState {
   title: string;
   initialCommand?: string;
   exited: boolean;
+  hidden: boolean;
 }
 
 let tabCounter = 0;
@@ -23,9 +24,10 @@ let tabCounter = 0;
 export const TerminalTabs = forwardRef<TerminalTabsHandle, TerminalTabsProps>(
   function TerminalTabs({ cwd, theme }, ref) {
     const [tabs, setTabs] = useState<TabState[]>(() => [
-      { id: crypto.randomUUID(), title: `Terminal ${++tabCounter}`, exited: false },
+      { id: crypto.randomUUID(), title: `Terminal ${++tabCounter}`, exited: false, hidden: false },
     ]);
     const [activeId, setActiveId] = useState(() => tabs[0].id);
+    const [showBackground, setShowBackground] = useState(false);
     const notify = useNotify();
 
     const addTab = (title?: string, initialCommand?: string) => {
@@ -34,6 +36,7 @@ export const TerminalTabs = forwardRef<TerminalTabsHandle, TerminalTabsProps>(
         title: title ?? `Terminal ${++tabCounter}`,
         initialCommand,
         exited: false,
+        hidden: false,
       };
       setTabs((prev) => [...prev, tab]);
       setActiveId(tab.id);
@@ -43,20 +46,41 @@ export const TerminalTabs = forwardRef<TerminalTabsHandle, TerminalTabsProps>(
       openTab: (title, initialCommand) => addTab(title, initialCommand),
     }));
 
+    const visibleTabs = tabs.filter((t) => !t.hidden);
+    const backgroundTabs = tabs.filter((t) => t.hidden);
+
     const closeTab = (id: string) => {
       setTabs((prev) => {
         const next = prev.filter((t) => t.id !== id);
-        if (activeId === id && next.length > 0) {
-          setActiveId(next[next.length - 1].id);
+        if (activeId === id) {
+          const stillVisible = next.filter((t) => !t.hidden);
+          if (stillVisible.length > 0) setActiveId(stillVisible[stillVisible.length - 1].id);
         }
         return next;
       });
     };
 
+    const hideTab = (id: string) => {
+      setTabs((prev) => {
+        const next = prev.map((t) => (t.id === id ? { ...t, hidden: true } : t));
+        if (activeId === id) {
+          const stillVisible = next.filter((t) => !t.hidden);
+          if (stillVisible.length > 0) setActiveId(stillVisible[stillVisible.length - 1].id);
+        }
+        return next;
+      });
+    };
+
+    const restoreTab = (id: string) => {
+      setTabs((prev) => prev.map((t) => (t.id === id ? { ...t, hidden: false } : t)));
+      setActiveId(id);
+      setShowBackground(false);
+    };
+
     const markExited = (id: string) => {
       setTabs((prev) => {
         const tab = prev.find((t) => t.id === id);
-        if (tab && id !== activeId) {
+        if (tab && (tab.hidden || id !== activeId)) {
           notify("Mihani", `${tab.title} finished`);
         }
         return prev.map((t) => (t.id === id ? { ...t, exited: true } : t));
@@ -66,7 +90,7 @@ export const TerminalTabs = forwardRef<TerminalTabsHandle, TerminalTabsProps>(
     return (
       <div className="terminal-tabs">
         <div className="terminal-tabbar">
-          {tabs.map((tab) => (
+          {visibleTabs.map((tab) => (
             <div
               key={tab.id}
               className={`terminal-tab ${tab.id === activeId ? "terminal-tab-active" : ""}`}
@@ -74,6 +98,16 @@ export const TerminalTabs = forwardRef<TerminalTabsHandle, TerminalTabsProps>(
             >
               {tab.exited && <span className="terminal-tab-exited-dot" title="Process exited" />}
               <span>{tab.title}</span>
+              <button
+                className="terminal-tab-hide"
+                title="Run in background"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  hideTab(tab.id);
+                }}
+              >
+                ⌄
+              </button>
               {tabs.length > 1 && (
                 <button
                   className="terminal-tab-close"
@@ -90,13 +124,34 @@ export const TerminalTabs = forwardRef<TerminalTabsHandle, TerminalTabsProps>(
           <button className="terminal-tab-add" onClick={() => addTab()} title="New terminal">
             +
           </button>
+          <div className="terminal-tabbar-spacer" />
+          {backgroundTabs.length > 0 && (
+            <div className="background-tasks">
+              <button
+                className="background-tasks-btn"
+                onClick={() => setShowBackground((v) => !v)}
+              >
+                Background ({backgroundTabs.length})
+              </button>
+              {showBackground && (
+                <ul className="background-tasks-list">
+                  {backgroundTabs.map((tab) => (
+                    <li key={tab.id} onClick={() => restoreTab(tab.id)}>
+                      {tab.exited && <span className="terminal-tab-exited-dot" />}
+                      {tab.title}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
         <div className="terminal-tab-content">
           {tabs.map((tab) => (
             <div
               key={tab.id}
               className="terminal-tab-pane"
-              style={{ display: tab.id === activeId ? "flex" : "none" }}
+              style={{ display: !tab.hidden && tab.id === activeId ? "flex" : "none" }}
             >
               <TerminalPane
                 cwd={cwd}
