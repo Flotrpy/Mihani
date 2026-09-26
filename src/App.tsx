@@ -74,13 +74,25 @@ function App() {
             className={`keepawake-toggle ${keepAwake ? "keepawake-toggle-active" : ""}`}
             onClick={toggleKeepAwake}
             title={keepAwake ? "Keep awake: on" : "Keep awake: off"}
+            aria-label={keepAwake ? "Keep awake: on" : "Keep awake: off"}
+            aria-pressed={keepAwake}
           >
             {keepAwake ? "◉ Awake" : "○ Awake"}
           </button>
-          <button className="theme-toggle" onClick={() => setShowSettings(true)} title="Settings">
+          <button
+            className="theme-toggle"
+            onClick={() => setShowSettings(true)}
+            title="Settings"
+            aria-label="Open settings"
+          >
             ⚙
           </button>
-          <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
+          <button
+            className="theme-toggle"
+            onClick={toggleTheme}
+            title="Toggle theme"
+            aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+          >
             {theme === "dark" ? "☾" : "☀"}
           </button>
         </div>
@@ -97,6 +109,7 @@ function App() {
                 <button
                   className="workspace-reveal-btn"
                   title="Reveal in file manager"
+                  aria-label="Reveal workspace folder in file manager"
                   onClick={() => revealItemInDir(path)}
                 >
                   ⤢

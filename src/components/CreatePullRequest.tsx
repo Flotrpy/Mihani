@@ -39,7 +39,7 @@ export function CreatePullRequest({ path, branch, onClose }: CreatePullRequestPr
       <div className="diff-panel" onClick={(e) => e.stopPropagation()}>
         <div className="diff-panel-header">
           <span className="diff-panel-title">Create Pull Request</span>
-          <button className="diff-panel-close" onClick={onClose}>
+          <button className="diff-panel-close" onClick={onClose} aria-label="Close">
             ×
           </button>
         </div>

@@ -24,7 +24,7 @@ export function DiffViewer({ path, file, onClose }: DiffViewerProps) {
       <div className="diff-panel" onClick={(e) => e.stopPropagation()}>
         <div className="diff-panel-header">
           <span className="diff-panel-title">{file}</span>
-          <button className="diff-panel-close" onClick={onClose}>
+          <button className="diff-panel-close" onClick={onClose} aria-label="Close diff view">
             ×
           </button>
         </div>

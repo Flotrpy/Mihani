@@ -162,6 +162,7 @@ export function GitStatusPanel({ path }: { path: string }) {
             <button
               className="git-file-discard-btn"
               title="Discard changes"
+              aria-label={`Discard changes to ${file.path}`}
               onClick={(e) => {
                 e.stopPropagation();
                 setDiscardTarget(file.path);

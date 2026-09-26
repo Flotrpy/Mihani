@@ -143,6 +143,7 @@ export const TerminalTabs = forwardRef<TerminalTabsHandle, TerminalTabsProps>(
               <button
                 className="terminal-tab-hide"
                 title="Run in background"
+                aria-label={`Run "${tab.title}" in background`}
                 onClick={(e) => {
                   e.stopPropagation();
                   hideTab(tab.id);
@@ -153,6 +154,7 @@ export const TerminalTabs = forwardRef<TerminalTabsHandle, TerminalTabsProps>(
               {tabs.length > 1 && (
                 <button
                   className="terminal-tab-close"
+                  aria-label={`Close "${tab.title}"`}
                   onClick={(e) => {
                     e.stopPropagation();
                     closeTab(tab.id);
@@ -163,7 +165,12 @@ export const TerminalTabs = forwardRef<TerminalTabsHandle, TerminalTabsProps>(
               )}
             </div>
           ))}
-          <button className="terminal-tab-add" onClick={() => addTab()} title="New terminal">
+          <button
+            className="terminal-tab-add"
+            onClick={() => addTab()}
+            title="New terminal"
+            aria-label="New terminal"
+          >
             +
           </button>
           <div className="terminal-tabbar-spacer" />

@@ -13,7 +13,7 @@ export function SettingsPanel({ onClose, initialTab }: { onClose: () => void; in
       <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
         <div className="diff-panel-header">
           <span className="diff-panel-title">Settings</span>
-          <button className="diff-panel-close" onClick={onClose}>
+          <button className="diff-panel-close" onClick={onClose} aria-label="Close settings">
             ×
           </button>
         </div>

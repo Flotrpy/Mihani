@@ -211,14 +211,15 @@ export function TerminalPane({
               if (e.key === "Escape") closeSearch();
             }}
             placeholder="Find in terminal…"
+            aria-label="Find in terminal"
           />
-          <button onClick={findPrevious} title="Previous match">
+          <button onClick={findPrevious} title="Previous match" aria-label="Previous match">
             ↑
           </button>
-          <button onClick={findNext} title="Next match">
+          <button onClick={findNext} title="Next match" aria-label="Next match">
             ↓
           </button>
-          <button onClick={closeSearch} title="Close">
+          <button onClick={closeSearch} title="Close" aria-label="Close search">
             ×
           </button>
         </div>
