@@ -28,6 +28,8 @@ export const TerminalTabs = forwardRef<TerminalTabsHandle, TerminalTabsProps>(
     ]);
     const [activeId, setActiveId] = useState(() => tabs[0].id);
     const [showBackground, setShowBackground] = useState(false);
+    const [renamingId, setRenamingId] = useState<string | null>(null);
+    const [renameValue, setRenameValue] = useState("");
     const notify = useNotify();
 
     const addTab = (title?: string, initialCommand?: string) => {
@@ -77,6 +79,20 @@ export const TerminalTabs = forwardRef<TerminalTabsHandle, TerminalTabsProps>(
       setShowBackground(false);
     };
 
+    const startRename = (tab: TabState) => {
+      setRenamingId(tab.id);
+      setRenameValue(tab.title);
+    };
+
+    const commitRename = () => {
+      if (renamingId && renameValue.trim()) {
+        setTabs((prev) =>
+          prev.map((t) => (t.id === renamingId ? { ...t, title: renameValue.trim() } : t)),
+        );
+      }
+      setRenamingId(null);
+    };
+
     const markExited = (id: string) => {
       setTabs((prev) => {
         const tab = prev.find((t) => t.id === id);
@@ -95,9 +111,25 @@ export const TerminalTabs = forwardRef<TerminalTabsHandle, TerminalTabsProps>(
               key={tab.id}
               className={`terminal-tab ${tab.id === activeId ? "terminal-tab-active" : ""}`}
               onClick={() => setActiveId(tab.id)}
+              onDoubleClick={() => startRename(tab)}
             >
               {tab.exited && <span className="terminal-tab-exited-dot" title="Process exited" />}
-              <span>{tab.title}</span>
+              {renamingId === tab.id ? (
+                <input
+                  autoFocus
+                  className="terminal-tab-rename-input"
+                  value={renameValue}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onBlur={commitRename}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitRename();
+                    if (e.key === "Escape") setRenamingId(null);
+                  }}
+                />
+              ) : (
+                <span>{tab.title}</span>
+              )}
               <button
                 className="terminal-tab-hide"
                 title="Run in background"

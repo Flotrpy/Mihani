@@ -761,6 +761,16 @@
   padding: 0 2px;
 }
 
+.terminal-tab-rename-input {
+  width: 90px;
+  border: none;
+  background: var(--mh-surface-raised);
+  color: inherit;
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-size: 12.5px;
+}
+
 .terminal-tab-hide {
   border: none;
   background: transparent;

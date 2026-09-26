@@ -59,6 +59,7 @@ export function TerminalPane({ cwd, theme, initialCommand, onExit }: TerminalPan
       fontFamily: "'JetBrains Mono', 'Fira Code', Menlo, monospace",
       fontSize: 13,
       theme: XTERM_THEMES[theme],
+      rightClickSelectsWord: true,
     });
     const fitAddon = new FitAddon();
     const searchAddon = new SearchAddon();
@@ -108,6 +109,13 @@ export function TerminalPane({ cwd, theme, initialCommand, onExit }: TerminalPan
         invoke("terminal_write", { id, data }).catch(() => {});
       });
     })();
+
+    term.onSelectionChange(() => {
+      const selection = term.getSelection();
+      if (selection) {
+        navigator.clipboard?.writeText(selection).catch(() => {});
+      }
+    });
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f") {
