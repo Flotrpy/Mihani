@@ -216,10 +216,24 @@ async fn index_page(
         .into_iter()
         .map(|(id, title)| {
             format!(
-                r#"<li><a href="/view/{id}?token={token}">{title}</a></li>"#,
+                r#"<li><a href="/view/{id}?token={token}">{title}</a>
+                <button onclick="sessionAction('{id}','cancel')">Cancel</button>
+                <button onclick="sessionAction('{id}','restart')">Restart</button>
+                <button onclick="sessionAction('{id}','stop')">Stop</button></li>"#,
                 id = id,
                 title = html_escape(&title),
                 token = auth.token,
+            )
+        })
+        .collect();
+
+    let agent_buttons: String = list_agents()
+        .into_iter()
+        .map(|agent| {
+            format!(
+                r#"<button onclick="startAgent('{id}')">{name}</button>"#,
+                id = agent.id,
+                name = html_escape(&agent.name),
             )
         })
         .collect();
@@ -232,6 +246,8 @@ async fn index_page(
         pre{{white-space:pre-wrap;word-break:break-word;background:#0f0b1a;padding:10px;border-radius:6px}}
         .file{{cursor:pointer;color:#9b7cff}} #gitOut{{margin-top:10px}}</style></head>
         <body><h1>Mihani — active sessions</h1><ul>{items}</ul>
+        <h2>Start an agent</h2>
+        {agent_buttons}
         <h2>Actions</h2>
         <button onclick="fetch('/action?token={token}',{{method:'POST',headers:{{'content-type':'application/json'}},body:JSON.stringify({{action:'run_tests'}})}})">Run tests</button>
         <button onclick="fetch('/action?token={token}',{{method:'POST',headers:{{'content-type':'application/json'}},body:JSON.stringify({{action:'request_commit_push'}})}})">Request commit &amp; push</button>
@@ -239,6 +255,20 @@ async fn index_page(
         <button onclick="loadStatus()">Refresh status</button>
         <div id="gitOut"></div>
         <script>
+          function sessionAction(id, action) {{
+            fetch('/action?token={token}', {{
+              method: 'POST',
+              headers: {{'content-type': 'application/json'}},
+              body: JSON.stringify({{action, session_id: id}}),
+            }}).then(() => setTimeout(() => location.reload(), 300));
+          }}
+          function startAgent(agentId) {{
+            fetch('/action?token={token}', {{
+              method: 'POST',
+              headers: {{'content-type': 'application/json'}},
+              body: JSON.stringify({{action: 'start_agent', agent_id: agentId}}),
+            }}).then(() => setTimeout(() => location.reload(), 500));
+          }}
           async function loadStatus() {{
             const out = document.getElementById('gitOut');
             out.textContent = 'Loading…';
@@ -260,6 +290,7 @@ async fn index_page(
         </script>
         </body></html>"#,
         items = items,
+        agent_buttons = agent_buttons,
         token = auth.token,
     ))
 }
