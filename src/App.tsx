@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useTheme } from "./hooks/useTheme";
 import { useWorkspace } from "./hooks/useWorkspace";
 import { useKeepAwake } from "./hooks/useKeepAwake";
@@ -48,7 +49,18 @@ function App() {
             <button className="workspace-open-btn" onClick={openFolder}>
               {path ? "Change Folder" : "Open Folder"}
             </button>
-            {path && <div className="workspace-path" title={path}>{path}</div>}
+            {path && (
+              <div className="workspace-path-row">
+                <div className="workspace-path" title={path}>{path}</div>
+                <button
+                  className="workspace-reveal-btn"
+                  title="Reveal in file manager"
+                  onClick={() => revealItemInDir(path)}
+                >
+                  ⤢
+                </button>
+              </div>
+            )}
             {!path && recents.length > 0 && (
               <ul className="workspace-recents">
                 {recents.map((recent) => (
