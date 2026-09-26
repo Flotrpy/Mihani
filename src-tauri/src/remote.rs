@@ -228,11 +228,36 @@ async fn index_page(
         <title>Mihani Remote</title>
         <style>body{{font-family:sans-serif;background:#14101f;color:#ece7f9;padding:20px}}
         a{{color:#9b7cff}} li{{margin:8px 0}} button{{background:#7c5cff;color:#fff;border:none;
-        border-radius:6px;padding:8px 14px;margin:4px 6px 4px 0;cursor:pointer}}</style></head>
+        border-radius:6px;padding:8px 14px;margin:4px 6px 4px 0;cursor:pointer}}
+        pre{{white-space:pre-wrap;word-break:break-word;background:#0f0b1a;padding:10px;border-radius:6px}}
+        .file{{cursor:pointer;color:#9b7cff}} #gitOut{{margin-top:10px}}</style></head>
         <body><h1>Mihani — active sessions</h1><ul>{items}</ul>
         <h2>Actions</h2>
         <button onclick="fetch('/action?token={token}',{{method:'POST',headers:{{'content-type':'application/json'}},body:JSON.stringify({{action:'run_tests'}})}})">Run tests</button>
         <button onclick="fetch('/action?token={token}',{{method:'POST',headers:{{'content-type':'application/json'}},body:JSON.stringify({{action:'request_commit_push'}})}})">Request commit &amp; push</button>
+        <h2>Git</h2>
+        <button onclick="loadStatus()">Refresh status</button>
+        <div id="gitOut"></div>
+        <script>
+          async function loadStatus() {{
+            const out = document.getElementById('gitOut');
+            out.textContent = 'Loading…';
+            const res = await fetch('/git/status?token={token}');
+            if (!res.ok) {{ out.textContent = 'Error: ' + await res.text(); return; }}
+            const status = await res.json();
+            let html = '<p>Branch: ' + status.branch + '</p><ul>';
+            for (const f of status.files) {{
+              html += '<li class="file" onclick="loadDiff(\'' + f.path.replace(/'/g, "\\'") + '\')">'
+                + '[' + f.status + '] ' + f.path + '</li>';
+            }}
+            html += '</ul><pre id="diffOut"></pre>';
+            out.innerHTML = status.files.length ? html : '<p>Working tree clean</p>';
+          }}
+          async function loadDiff(file) {{
+            const res = await fetch('/git/diff?token={token}&file=' + encodeURIComponent(file));
+            document.getElementById('diffOut').textContent = await res.text();
+          }}
+        </script>
         </body></html>"#,
         items = items,
         token = auth.token,
