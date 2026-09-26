@@ -31,6 +31,7 @@ pub fn run() {
             git::git_checkout_branch,
             git::git_create_branch,
             git::git_remote_info,
+            git::git_discard_file,
             agents::list_agents,
             agents::check_agent_installed,
             keepawake::keepawake_enable,

@@ -34,6 +34,7 @@ export function GitStatusPanel({ path }: { path: string }) {
   const [diffFile, setDiffFile] = useState<string | null>(null);
   const [showCreatePr, setShowCreatePr] = useState(false);
   const [branchRefreshKey, setBranchRefreshKey] = useState(0);
+  const [discardTarget, setDiscardTarget] = useState<string | null>(null);
 
   const refresh = () => {
     invoke<GitRepoStatus>("git_status", { path })
@@ -63,6 +64,13 @@ export function GitStatusPanel({ path }: { path: string }) {
     } finally {
       setBusy(false);
     }
+  };
+
+  const confirmDiscard = () => {
+    if (!discardTarget) return;
+    const file = discardTarget;
+    setDiscardTarget(null);
+    runAction(() => invoke("git_discard_file", { path, file }));
   };
 
   const handleCommit = () => {
@@ -105,11 +113,35 @@ export function GitStatusPanel({ path }: { path: string }) {
           >
             <span className="git-file-badge">{STATUS_LABEL[file.status] ?? "?"}</span>
             <span className="git-file-path">{file.path}</span>
+            <button
+              className="git-file-discard-btn"
+              title="Discard changes"
+              onClick={(e) => {
+                e.stopPropagation();
+                setDiscardTarget(file.path);
+              }}
+            >
+              ⟲
+            </button>
           </li>
         ))}
       </ul>
       {diffFile && (
         <DiffViewer path={path} file={diffFile} onClose={() => setDiffFile(null)} />
+      )}
+      {discardTarget && (
+        <div className="diff-overlay" onClick={() => setDiscardTarget(null)}>
+          <div className="trust-dialog" onClick={(e) => e.stopPropagation()}>
+            <p>
+              Discard all changes to <strong>{discardTarget}</strong>?
+            </p>
+            <p className="trust-warning">This cannot be undone.</p>
+            <div className="agent-add-actions">
+              <button onClick={confirmDiscard}>Discard</button>
+              <button onClick={() => setDiscardTarget(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
       )}
       <div className="git-actions">
         <textarea

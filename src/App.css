@@ -873,9 +873,29 @@
 }
 
 .git-file-path {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.git-file-discard-btn {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--mh-text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  opacity: 0;
+}
+
+.git-file:hover .git-file-discard-btn {
+  opacity: 1;
+}
+
+.git-file-discard-btn:hover {
+  color: var(--mh-danger);
 }
 
 .git-file-empty {

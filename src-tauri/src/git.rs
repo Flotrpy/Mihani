@@ -190,6 +190,24 @@ pub fn git_pull(path: String) -> Result<String, String> {
     run_git(&path, &["pull", "--ff-only"])
 }
 
+/// Discards a file's pending changes: for a tracked file this restores it
+/// from HEAD (or the index, for a newly-added-but-uncommitted file); for
+/// an untracked file this deletes it from disk. Irreversible, so the
+/// frontend must confirm with the user before calling this.
+#[tauri::command]
+pub fn git_discard_file(path: String, file: String) -> Result<(), String> {
+    let repo = Repository::discover(&path).map_err(|e| e.to_string())?;
+    let status = repo.status_file(std::path::Path::new(&file)).map_err(|e| e.to_string())?;
+
+    if status.is_wt_new() && !status.is_index_new() {
+        std::fs::remove_file(std::path::Path::new(&path).join(&file)).map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    run_git(&path, &["checkout", "--", &file])?;
+    Ok(())
+}
+
 #[derive(Serialize)]
 pub struct GitBranch {
     pub name: String,
@@ -378,6 +396,37 @@ mod tests {
         let branches = git_list_branches(dir.to_string_lossy().to_string()).unwrap();
         assert_eq!(branches.len(), 2);
         assert!(branches.iter().any(|b| b.name == "feature-x" && b.is_head));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn git_discard_file_removes_untracked_file() {
+        let dir = tempfile_dir();
+        Repository::init(&dir).unwrap();
+        std::fs::write(dir.join("scratch.txt"), "throwaway").unwrap();
+
+        git_discard_file(dir.to_string_lossy().to_string(), "scratch.txt".into()).unwrap();
+        assert!(!dir.join("scratch.txt").exists());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn git_discard_file_restores_modified_tracked_file() {
+        let dir = tempfile_dir();
+        let repo = Repository::init(&dir).unwrap();
+        let mut config = repo.config().unwrap();
+        config.set_str("user.name", "Test").unwrap();
+        config.set_str("user.email", "test@example.com").unwrap();
+        std::fs::write(dir.join("README.md"), "original").unwrap();
+        git_commit(dir.to_string_lossy().to_string(), "init".into()).unwrap();
+
+        std::fs::write(dir.join("README.md"), "changed").unwrap();
+        git_discard_file(dir.to_string_lossy().to_string(), "README.md".into()).unwrap();
+
+        let contents = std::fs::read_to_string(dir.join("README.md")).unwrap();
+        assert_eq!(contents, "original");
 
         std::fs::remove_dir_all(&dir).ok();
     }
