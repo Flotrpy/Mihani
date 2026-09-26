@@ -200,6 +200,106 @@
   border-color: var(--mh-accent);
 }
 
+.agent-custom-badge {
+  margin-left: 6px;
+  font-size: 9px;
+  text-transform: uppercase;
+  color: var(--mh-text-muted);
+  border: 1px solid var(--mh-border);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
+.agent-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.agent-remove-btn {
+  border: none;
+  background: transparent;
+  color: var(--mh-text-muted);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.agent-remove-btn:hover {
+  color: var(--mh-danger);
+}
+
+.agent-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.agent-add-form input {
+  border-radius: 6px;
+  border: 1px solid var(--mh-border);
+  background: var(--mh-surface-raised);
+  color: var(--mh-text);
+  font-size: 12px;
+  padding: 5px;
+}
+
+.agent-add-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.agent-add-actions button {
+  border: 1px solid var(--mh-border);
+  background: var(--mh-surface-raised);
+  color: var(--mh-text);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.agent-add-btn {
+  margin-top: 6px;
+  border: none;
+  background: transparent;
+  color: var(--mh-text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.agent-add-btn:hover {
+  color: var(--mh-accent);
+}
+
+.trust-dialog {
+  width: min(420px, 90vw);
+  background: var(--mh-surface);
+  border: 1px solid var(--mh-border);
+  border-radius: 12px;
+  padding: 18px;
+  font-size: 13px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.trust-command {
+  display: block;
+  background: var(--mh-terminal-bg);
+  color: var(--mh-terminal-fg);
+  border-radius: 6px;
+  padding: 8px;
+  margin: 8px 0;
+  font-size: 12px;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.trust-warning {
+  color: var(--mh-text-muted);
+  font-size: 12px;
+}
+
 .branch-switcher {
   margin-bottom: 8px;
 }
