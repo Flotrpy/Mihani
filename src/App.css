@@ -129,9 +129,50 @@
   background: var(--mh-terminal-bg);
 }
 
+.terminal-pane-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
 .terminal-pane {
   flex: 1;
   padding: 8px;
+  min-height: 0;
+}
+
+.terminal-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--mh-surface);
+  border-bottom: 1px solid var(--mh-border);
+  flex-shrink: 0;
+}
+
+.terminal-search-bar input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--mh-border);
+  background: var(--mh-surface-raised);
+  color: var(--mh-text);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.terminal-search-bar button {
+  border: 1px solid var(--mh-border);
+  background: var(--mh-surface-raised);
+  color: var(--mh-text);
+  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 12px;
 }
 
 .workspace-picker {
