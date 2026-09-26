@@ -1,0 +1,158 @@
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  height: 44px;
+  flex-shrink: 0;
+  background: var(--mh-surface);
+  border-bottom: 1px solid var(--mh-border);
+  -webkit-app-region: drag;
+}
+
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.app-brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--mh-accent);
+  color: white;
+  font-size: 13px;
+}
+
+.theme-toggle {
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--mh-border);
+  background: var(--mh-surface-raised);
+  color: var(--mh-text);
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.theme-toggle:hover {
+  border-color: var(--mh-accent);
+}
+
+.app-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.app-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  background: var(--mh-surface);
+  border-right: 1px solid var(--mh-border);
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.sidebar-section-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mh-text-muted);
+  margin-bottom: 8px;
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  background: var(--mh-terminal-bg);
+}
+
+.terminal-pane {
+  flex: 1;
+  padding: 8px;
+}
+
+.git-panel-empty {
+  color: var(--mh-text-muted);
+  font-size: 13px;
+}
+
+.git-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.git-sync {
+  color: var(--mh-text-muted);
+  font-weight: 500;
+}
+
+.git-file-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12.5px;
+}
+
+.git-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.git-file:hover {
+  background: var(--mh-accent-soft);
+}
+
+.git-file-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--mh-accent-soft);
+  color: var(--mh-accent);
+}
+
+.git-file-deleted .git-file-badge {
+  color: var(--mh-danger);
+}
+
+.git-file-added .git-file-badge {
+  color: var(--mh-success);
+}
+
+.git-file-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-file-empty {
+  color: var(--mh-text-muted);
+  padding: 4px 6px;
+}
