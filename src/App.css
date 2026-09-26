@@ -87,6 +87,124 @@
   padding: 8px;
 }
 
+.workspace-picker {
+  margin-bottom: 16px;
+}
+
+.workspace-open-btn {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--mh-border);
+  background: var(--mh-accent);
+  color: white;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.workspace-open-btn:hover {
+  background: var(--mh-accent-hover);
+}
+
+.workspace-path {
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--mh-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-recents {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  font-size: 12px;
+}
+
+.workspace-recents li {
+  padding: 6px;
+  border-radius: 6px;
+  color: var(--mh-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.workspace-recents li:hover {
+  background: var(--mh-accent-soft);
+  color: var(--mh-text);
+}
+
+.terminal-tabs {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.terminal-tabbar {
+  display: flex;
+  align-items: center;
+  background: var(--mh-surface);
+  border-bottom: 1px solid var(--mh-border);
+  flex-shrink: 0;
+  padding: 4px 4px 0;
+  gap: 2px;
+}
+
+.terminal-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 12.5px;
+  color: var(--mh-text-muted);
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+}
+
+.terminal-tab-active {
+  background: var(--mh-terminal-bg);
+  color: var(--mh-terminal-fg);
+}
+
+.terminal-tab-close {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.terminal-tab-add {
+  border: none;
+  background: transparent;
+  color: var(--mh-text-muted);
+  cursor: pointer;
+  font-size: 15px;
+  padding: 4px 10px;
+}
+
+.terminal-tab-add:hover {
+  color: var(--mh-accent);
+}
+
+.terminal-tab-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.terminal-tab-pane {
+  flex: 1;
+  min-width: 0;
+}
+
 .git-panel-empty {
   color: var(--mh-text-muted);
   font-size: 13px;
