@@ -18,10 +18,22 @@ export function AgentLauncher({ onLaunch, onManage }: AgentLauncherProps) {
   const [builtins, setBuiltins] = useState<AgentDefinition[]>([]);
   const { customAgents, trustedIds, trustAgent } = useCustomAgents();
   const [pendingTrust, setPendingTrust] = useState<AgentDefinition | null>(null);
+  const [installed, setInstalled] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     invoke<AgentDefinition[]>("list_agents").then(setBuiltins).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const allAgents = [...builtins, ...customAgents];
+    allAgents.forEach((agent) => {
+      if (agent.id in installed) return;
+      invoke<boolean>("check_agent_installed", { command: agent.command })
+        .then((ok) => setInstalled((prev) => ({ ...prev, [agent.id]: ok })))
+        .catch(() => {});
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [builtins, customAgents]);
 
   const isCustom = (agent: AgentDefinition) => agent.id.startsWith("custom-");
 
@@ -51,17 +63,29 @@ export function AgentLauncher({ onLaunch, onManage }: AgentLauncherProps) {
         </button>
       </div>
       <ul className="agent-list">
-        {allAgents.map((agent) => (
-          <li key={agent.id} className="agent-item" title={agent.description}>
-            <span className="agent-name">
-              {agent.name}
-              {isCustom(agent) && <span className="agent-custom-badge">custom</span>}
-            </span>
-            <button className="agent-launch-btn" onClick={() => handleLaunchClick(agent)}>
-              Launch
-            </button>
-          </li>
-        ))}
+        {allAgents.map((agent) => {
+          const isInstalled = installed[agent.id] ?? true;
+          return (
+            <li key={agent.id} className="agent-item" title={agent.description}>
+              <span className="agent-name">
+                {agent.name}
+                {isCustom(agent) && <span className="agent-custom-badge">custom</span>}
+                {!isInstalled && (
+                  <span className="agent-missing-badge" title={`'${agent.command}' not found on PATH`}>
+                    not found
+                  </span>
+                )}
+              </span>
+              <button
+                className="agent-launch-btn"
+                onClick={() => handleLaunchClick(agent)}
+                disabled={!isInstalled}
+              >
+                Launch
+              </button>
+            </li>
+          );
+        })}
       </ul>
 
       {pendingTrust && (

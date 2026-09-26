@@ -43,6 +43,17 @@ pub fn list_agents() -> Vec<AgentDefinition> {
     builtin_agents()
 }
 
+/// Checks whether a command's binary is on PATH, using this process's
+/// environment. Note this can under-report availability for tools only
+/// added to PATH by shell startup files (e.g. via nvm), since those run
+/// in the interactive shell rather than this process — a "not found"
+/// result is a hint, not a guarantee the command will fail in-terminal.
+#[tauri::command]
+pub fn check_agent_installed(command: String) -> bool {
+    let binary = command.split_whitespace().next().unwrap_or(&command);
+    which::which(binary).is_ok()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -59,5 +70,21 @@ mod tests {
     #[test]
     fn builtin_agents_is_non_empty() {
         assert!(!builtin_agents().is_empty());
+    }
+
+    #[test]
+    fn detects_a_known_installed_binary() {
+        // `git` is guaranteed present in this project's dev/CI environment.
+        assert!(check_agent_installed("git".to_string()));
+    }
+
+    #[test]
+    fn reports_missing_binary_as_not_installed() {
+        assert!(!check_agent_installed("mihani-definitely-not-a-real-binary".to_string()));
+    }
+
+    #[test]
+    fn checks_only_the_first_word_of_a_command_with_arguments() {
+        assert!(check_agent_installed("git status".to_string()));
     }
 }

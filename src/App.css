@@ -223,6 +223,21 @@
   border-color: var(--mh-accent);
 }
 
+.agent-launch-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.agent-missing-badge {
+  margin-left: 6px;
+  font-size: 9px;
+  text-transform: uppercase;
+  color: var(--mh-danger);
+  border: 1px solid var(--mh-danger);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
 .agent-custom-badge {
   margin-left: 6px;
   font-size: 9px;
