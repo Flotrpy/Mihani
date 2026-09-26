@@ -11,15 +11,13 @@ export interface AgentDefinition {
 
 interface AgentLauncherProps {
   onLaunch: (agent: AgentDefinition) => void;
+  onManage: () => void;
 }
 
-export function AgentLauncher({ onLaunch }: AgentLauncherProps) {
+export function AgentLauncher({ onLaunch, onManage }: AgentLauncherProps) {
   const [builtins, setBuiltins] = useState<AgentDefinition[]>([]);
-  const { customAgents, trustedIds, addAgent, removeAgent, trustAgent } = useCustomAgents();
+  const { customAgents, trustedIds, trustAgent } = useCustomAgents();
   const [pendingTrust, setPendingTrust] = useState<AgentDefinition | null>(null);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [newCommand, setNewCommand] = useState("");
 
   useEffect(() => {
     invoke<AgentDefinition[]>("list_agents").then(setBuiltins).catch(() => {});
@@ -42,20 +40,16 @@ export function AgentLauncher({ onLaunch }: AgentLauncherProps) {
     setPendingTrust(null);
   };
 
-  const handleAddAgent = async () => {
-    if (!newName.trim() || !newCommand.trim()) return;
-    await addAgent({ name: newName.trim(), command: newCommand.trim(), description: "Custom agent" });
-    setNewName("");
-    setNewCommand("");
-    setShowAddForm(false);
-  };
-
   const allAgents = [...builtins, ...customAgents];
-  if (allAgents.length === 0 && !showAddForm) return null;
 
   return (
     <div className="agent-launcher">
-      <div className="sidebar-section-title">Agents</div>
+      <div className="sidebar-section-title-row">
+        <span className="sidebar-section-title">Agents</span>
+        <button className="sidebar-manage-btn" onClick={onManage}>
+          Manage
+        </button>
+      </div>
       <ul className="agent-list">
         {allAgents.map((agent) => (
           <li key={agent.id} className="agent-item" title={agent.description}>
@@ -63,42 +57,12 @@ export function AgentLauncher({ onLaunch }: AgentLauncherProps) {
               {agent.name}
               {isCustom(agent) && <span className="agent-custom-badge">custom</span>}
             </span>
-            <span className="agent-item-actions">
-              <button className="agent-launch-btn" onClick={() => handleLaunchClick(agent)}>
-                Launch
-              </button>
-              {isCustom(agent) && (
-                <button className="agent-remove-btn" onClick={() => removeAgent(agent.id)}>
-                  ×
-                </button>
-              )}
-            </span>
+            <button className="agent-launch-btn" onClick={() => handleLaunchClick(agent)}>
+              Launch
+            </button>
           </li>
         ))}
       </ul>
-
-      {showAddForm ? (
-        <div className="agent-add-form">
-          <input
-            placeholder="Name"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-          />
-          <input
-            placeholder="Shell command"
-            value={newCommand}
-            onChange={(e) => setNewCommand(e.target.value)}
-          />
-          <div className="agent-add-actions">
-            <button onClick={handleAddAgent}>Add</button>
-            <button onClick={() => setShowAddForm(false)}>Cancel</button>
-          </div>
-        </div>
-      ) : (
-        <button className="agent-add-btn" onClick={() => setShowAddForm(true)}>
-          + Add custom agent
-        </button>
-      )}
 
       {pendingTrust && (
         <div className="diff-overlay" onClick={() => setPendingTrust(null)}>

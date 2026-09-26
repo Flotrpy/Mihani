@@ -1,11 +1,11 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useTheme } from "./hooks/useTheme";
 import { useWorkspace } from "./hooks/useWorkspace";
 import { useKeepAwake } from "./hooks/useKeepAwake";
 import { TerminalTabs, type TerminalTabsHandle } from "./components/TerminalTabs";
 import { GitStatusPanel } from "./components/GitStatusPanel";
 import { AgentLauncher, type AgentDefinition } from "./components/AgentLauncher";
-import { GitHubPanel } from "./components/GitHubPanel";
+import { SettingsPanel } from "./components/SettingsPanel";
 import "./App.css";
 
 function App() {
@@ -13,6 +13,7 @@ function App() {
   const { path, recents, loaded, openFolder, selectPath } = useWorkspace();
   const { enabled: keepAwake, toggle: toggleKeepAwake } = useKeepAwake();
   const terminalTabsRef = useRef<TerminalTabsHandle>(null);
+  const [showSettings, setShowSettings] = useState(false);
 
   const launchAgent = (agent: AgentDefinition) => {
     terminalTabsRef.current?.openTab(agent.name, agent.command);
@@ -32,6 +33,9 @@ function App() {
             title={keepAwake ? "Keep awake: on" : "Keep awake: off"}
           >
             {keepAwake ? "◉ Awake" : "○ Awake"}
+          </button>
+          <button className="theme-toggle" onClick={() => setShowSettings(true)} title="Settings">
+            ⚙
           </button>
           <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
             {theme === "dark" ? "☾" : "☀"}
@@ -55,8 +59,7 @@ function App() {
               </ul>
             )}
           </div>
-          <AgentLauncher onLaunch={launchAgent} />
-          <GitHubPanel />
+          <AgentLauncher onLaunch={launchAgent} onManage={() => setShowSettings(true)} />
           {path && (
             <>
               <div className="sidebar-section-title">Source Control</div>
@@ -68,6 +71,7 @@ function App() {
           {loaded && <TerminalTabs ref={terminalTabsRef} cwd={path ?? undefined} theme={theme} />}
         </main>
       </div>
+      {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
     </div>
   );
 }
