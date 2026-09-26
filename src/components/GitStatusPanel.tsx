@@ -25,6 +25,9 @@ const STATUS_LABEL: Record<string, string> = {
 export function GitStatusPanel({ path }: { path: string }) {
   const [status, setStatus] = useState<GitRepoStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const refresh = () => {
     invoke<GitRepoStatus>("git_status", { path })
@@ -41,6 +44,27 @@ export function GitStatusPanel({ path }: { path: string }) {
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path]);
+
+  const runAction = async (action: () => Promise<unknown>) => {
+    setBusy(true);
+    setActionError(null);
+    try {
+      await action();
+      refresh();
+    } catch (err) {
+      setActionError(String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleCommit = () => {
+    if (!message.trim()) return;
+    runAction(async () => {
+      await invoke("git_commit", { path, message });
+      setMessage("");
+    });
+  };
 
   if (error) {
     return <div className="git-panel git-panel-empty">Not a git repository</div>;
@@ -72,6 +96,31 @@ export function GitStatusPanel({ path }: { path: string }) {
           </li>
         ))}
       </ul>
+      <div className="git-actions">
+        <textarea
+          className="git-commit-input"
+          placeholder="Commit message"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          disabled={busy}
+          rows={2}
+        />
+        <div className="git-action-row">
+          <button
+            disabled={busy || !message.trim() || status.files.length === 0}
+            onClick={handleCommit}
+          >
+            Commit
+          </button>
+          <button disabled={busy} onClick={() => runAction(() => invoke("git_pull", { path }))}>
+            Pull
+          </button>
+          <button disabled={busy} onClick={() => runAction(() => invoke("git_push", { path }))}>
+            Push
+          </button>
+        </div>
+        {actionError && <div className="git-action-error">{actionError}</div>}
+      </div>
     </div>
   );
 }

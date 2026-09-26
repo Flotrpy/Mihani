@@ -1,5 +1,6 @@
-use git2::{Repository, StatusOptions};
+use git2::{Repository, Signature, StatusOptions};
 use serde::Serialize;
+use std::process::Command;
 
 #[derive(Serialize)]
 pub struct GitFileStatus {
@@ -87,6 +88,73 @@ pub fn git_status(path: String) -> Result<GitRepoStatus, String> {
     })
 }
 
+/// Stages every pending change (new/modified/deleted, including untracked)
+/// and creates a commit on HEAD with the given message.
+#[tauri::command]
+pub fn git_commit(path: String, message: String) -> Result<String, String> {
+    let repo = Repository::discover(&path).map_err(|e| e.to_string())?;
+
+    let mut index = repo.index().map_err(|e| e.to_string())?;
+    index
+        .add_all(["*"].iter(), git2::IndexAddOption::DEFAULT, None)
+        .map_err(|e| e.to_string())?;
+    index.update_all(["*"].iter(), None).map_err(|e| e.to_string())?;
+    index.write().map_err(|e| e.to_string())?;
+
+    let tree_oid = index.write_tree().map_err(|e| e.to_string())?;
+    let tree = repo.find_tree(tree_oid).map_err(|e| e.to_string())?;
+
+    let signature = repo
+        .signature()
+        .or_else(|_| Signature::now("Mihani", "mihani@localhost"))
+        .map_err(|e| e.to_string())?;
+
+    let parents = match repo.head().ok().and_then(|h| h.peel_to_commit().ok()) {
+        Some(commit) => vec![commit],
+        None => vec![],
+    };
+    let parent_refs: Vec<&git2::Commit> = parents.iter().collect();
+
+    let commit_oid = repo
+        .commit(
+            Some("HEAD"),
+            &signature,
+            &signature,
+            &message,
+            &tree,
+            &parent_refs,
+        )
+        .map_err(|e| e.to_string())?;
+
+    Ok(commit_oid.to_string())
+}
+
+fn run_git(path: &str, args: &[&str]) -> Result<String, String> {
+    let output = Command::new("git")
+        .args(args)
+        .current_dir(path)
+        .output()
+        .map_err(|e| e.to_string())?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}
+
+/// Pushes the current branch. Delegates to the `git` binary so the user's
+/// existing credential helper / SSH agent / gh auth is reused as-is.
+#[tauri::command]
+pub fn git_push(path: String) -> Result<String, String> {
+    run_git(&path, &["push"])
+}
+
+#[tauri::command]
+pub fn git_pull(path: String) -> Result<String, String> {
+    run_git(&path, &["pull", "--ff-only"])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -126,6 +194,28 @@ mod tests {
         assert_eq!(status.files.len(), 1);
         assert_eq!(status.files[0].path, "README.md");
         assert_eq!(status.files[0].status, "added");
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn git_commit_stages_and_commits_all_changes() {
+        let dir = tempfile_dir();
+        let repo = Repository::init(&dir).unwrap();
+        let mut config = repo.config().unwrap();
+        config.set_str("user.name", "Test").unwrap();
+        config.set_str("user.email", "test@example.com").unwrap();
+        std::fs::write(dir.join("README.md"), "hello").unwrap();
+
+        let oid = git_commit(dir.to_string_lossy().to_string(), "initial commit".into())
+            .unwrap();
+        assert_eq!(oid.len(), 40);
+
+        let status = git_status(dir.to_string_lossy().to_string()).unwrap();
+        assert!(status.files.is_empty());
+
+        let head_commit = repo.head().unwrap().peel_to_commit().unwrap();
+        assert_eq!(head_commit.message().unwrap(), "initial commit");
 
         std::fs::remove_dir_all(&dir).ok();
     }
