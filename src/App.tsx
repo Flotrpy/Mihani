@@ -5,6 +5,7 @@ import { useKeepAwake } from "./hooks/useKeepAwake";
 import { TerminalTabs, type TerminalTabsHandle } from "./components/TerminalTabs";
 import { GitStatusPanel } from "./components/GitStatusPanel";
 import { AgentLauncher, type AgentDefinition } from "./components/AgentLauncher";
+import { GitHubPanel } from "./components/GitHubPanel";
 import "./App.css";
 
 function App() {
@@ -55,6 +56,7 @@ function App() {
             )}
           </div>
           <AgentLauncher onLaunch={launchAgent} />
+          <GitHubPanel />
           {path && (
             <>
               <div className="sidebar-section-title">Source Control</div>

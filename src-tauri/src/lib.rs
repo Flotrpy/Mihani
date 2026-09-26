@@ -1,5 +1,6 @@
 mod agents;
 mod git;
+mod github;
 mod keepawake;
 mod terminal;
 
@@ -28,6 +29,10 @@ pub fn run() {
             keepawake::keepawake_enable,
             keepawake::keepawake_disable,
             keepawake::keepawake_status,
+            github::github_set_token,
+            github::github_clear_token,
+            github::github_whoami,
+            github::github_create_pull_request,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
