@@ -20,6 +20,7 @@ pub fn run() {
             terminal::terminal_resize,
             terminal::terminal_kill,
             git::git_status,
+            git::git_diff,
             git::git_commit,
             git::git_push,
             git::git_pull,

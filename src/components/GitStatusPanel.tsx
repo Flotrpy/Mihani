@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { DiffViewer } from "./DiffViewer";
 
 interface GitFileStatus {
   path: string;
@@ -28,6 +29,7 @@ export function GitStatusPanel({ path }: { path: string }) {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [diffFile, setDiffFile] = useState<string | null>(null);
 
   const refresh = () => {
     invoke<GitRepoStatus>("git_status", { path })
@@ -90,12 +92,19 @@ export function GitStatusPanel({ path }: { path: string }) {
           <li className="git-file-empty">Working tree clean</li>
         )}
         {status.files.map((file) => (
-          <li key={file.path} className={`git-file git-file-${file.status}`}>
+          <li
+            key={file.path}
+            className={`git-file git-file-${file.status}`}
+            onClick={() => setDiffFile(file.path)}
+          >
             <span className="git-file-badge">{STATUS_LABEL[file.status] ?? "?"}</span>
             <span className="git-file-path">{file.path}</span>
           </li>
         ))}
       </ul>
+      {diffFile && (
+        <DiffViewer path={path} file={diffFile} onClose={() => setDiffFile(null)} />
+      )}
       <div className="git-actions">
         <textarea
           className="git-commit-input"

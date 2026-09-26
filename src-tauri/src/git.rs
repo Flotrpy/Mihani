@@ -88,6 +88,41 @@ pub fn git_status(path: String) -> Result<GitRepoStatus, String> {
     })
 }
 
+/// Returns a unified diff of the working tree against HEAD for a single
+/// file, including untracked files (shown as an addition against /dev/null).
+#[tauri::command]
+pub fn git_diff(path: String, file: String) -> Result<String, String> {
+    let repo = Repository::discover(&path).map_err(|e| e.to_string())?;
+
+    let head_tree = repo
+        .head()
+        .ok()
+        .and_then(|h| h.peel_to_tree().ok());
+
+    let mut opts = git2::DiffOptions::new();
+    opts.pathspec(&file)
+        .include_untracked(true)
+        .recurse_untracked_dirs(true)
+        .show_untracked_content(true);
+
+    let diff = repo
+        .diff_tree_to_workdir(head_tree.as_ref(), Some(&mut opts))
+        .map_err(|e| e.to_string())?;
+
+    let mut buf = String::new();
+    diff.print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
+        let origin = line.origin();
+        if origin == '+' || origin == '-' || origin == ' ' {
+            buf.push(origin);
+        }
+        buf.push_str(&String::from_utf8_lossy(line.content()));
+        true
+    })
+    .map_err(|e| e.to_string())?;
+
+    Ok(buf)
+}
+
 /// Stages every pending change (new/modified/deleted, including untracked)
 /// and creates a commit on HEAD with the given message.
 #[tauri::command]
@@ -216,6 +251,19 @@ mod tests {
 
         let head_commit = repo.head().unwrap().peel_to_commit().unwrap();
         assert_eq!(head_commit.message().unwrap(), "initial commit");
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn git_diff_reports_added_lines_for_untracked_file() {
+        let dir = tempfile_dir();
+        Repository::init(&dir).unwrap();
+        std::fs::write(dir.join("new.txt"), "line one\nline two\n").unwrap();
+
+        let diff = git_diff(dir.to_string_lossy().to_string(), "new.txt".into()).unwrap();
+        assert!(diff.contains("+line one"));
+        assert!(diff.contains("+line two"));
 
         std::fs::remove_dir_all(&dir).ok();
     }
