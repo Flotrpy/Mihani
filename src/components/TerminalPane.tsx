@@ -19,6 +19,7 @@ interface TerminalPaneProps {
   cwd?: string;
   theme: "light" | "dark";
   initialCommand?: string;
+  onExit?: () => void;
 }
 
 const XTERM_THEMES = {
@@ -36,11 +37,13 @@ const XTERM_THEMES = {
   },
 };
 
-export function TerminalPane({ cwd, theme, initialCommand }: TerminalPaneProps) {
+export function TerminalPane({ cwd, theme, initialCommand, onExit }: TerminalPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const sessionIdRef = useRef<string | null>(null);
+  const onExitRef = useRef(onExit);
+  onExitRef.current = onExit;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -88,6 +91,7 @@ export function TerminalPane({ cwd, theme, initialCommand }: TerminalPaneProps) 
         (event) => {
           if (event.payload.id === id) {
             term.write("\r\n\x1b[90m[process exited]\x1b[0m\r\n");
+            onExitRef.current?.();
           }
         },
       );

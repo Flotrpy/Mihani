@@ -574,6 +574,14 @@
   color: var(--mh-terminal-fg);
 }
 
+.terminal-tab-exited-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mh-text-muted);
+  flex-shrink: 0;
+}
+
 .terminal-tab-close {
   border: none;
   background: transparent;

@@ -14,6 +14,7 @@ interface TabState {
   id: string;
   title: string;
   initialCommand?: string;
+  exited: boolean;
 }
 
 let tabCounter = 0;
@@ -21,7 +22,7 @@ let tabCounter = 0;
 export const TerminalTabs = forwardRef<TerminalTabsHandle, TerminalTabsProps>(
   function TerminalTabs({ cwd, theme }, ref) {
     const [tabs, setTabs] = useState<TabState[]>(() => [
-      { id: crypto.randomUUID(), title: `Terminal ${++tabCounter}` },
+      { id: crypto.randomUUID(), title: `Terminal ${++tabCounter}`, exited: false },
     ]);
     const [activeId, setActiveId] = useState(() => tabs[0].id);
 
@@ -30,6 +31,7 @@ export const TerminalTabs = forwardRef<TerminalTabsHandle, TerminalTabsProps>(
         id: crypto.randomUUID(),
         title: title ?? `Terminal ${++tabCounter}`,
         initialCommand,
+        exited: false,
       };
       setTabs((prev) => [...prev, tab]);
       setActiveId(tab.id);
@@ -49,6 +51,10 @@ export const TerminalTabs = forwardRef<TerminalTabsHandle, TerminalTabsProps>(
       });
     };
 
+    const markExited = (id: string) => {
+      setTabs((prev) => prev.map((t) => (t.id === id ? { ...t, exited: true } : t)));
+    };
+
     return (
       <div className="terminal-tabs">
         <div className="terminal-tabbar">
@@ -58,6 +64,7 @@ export const TerminalTabs = forwardRef<TerminalTabsHandle, TerminalTabsProps>(
               className={`terminal-tab ${tab.id === activeId ? "terminal-tab-active" : ""}`}
               onClick={() => setActiveId(tab.id)}
             >
+              {tab.exited && <span className="terminal-tab-exited-dot" title="Process exited" />}
               <span>{tab.title}</span>
               {tabs.length > 1 && (
                 <button
@@ -83,7 +90,12 @@ export const TerminalTabs = forwardRef<TerminalTabsHandle, TerminalTabsProps>(
               className="terminal-tab-pane"
               style={{ display: tab.id === activeId ? "flex" : "none" }}
             >
-              <TerminalPane cwd={cwd} theme={theme} initialCommand={tab.initialCommand} />
+              <TerminalPane
+                cwd={cwd}
+                theme={theme}
+                initialCommand={tab.initialCommand}
+                onExit={() => markExited(tab.id)}
+              />
             </div>
           ))}
         </div>
