@@ -1,4 +1,5 @@
 mod agents;
+mod app_menu;
 mod git;
 mod github;
 mod keepawake;
@@ -17,6 +18,11 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .manage(TerminalRegistry::default())
         .manage(KeepAwakeState::default())
+        .setup(|app| {
+            let menu = app_menu::build(app.handle())?;
+            app.set_menu(menu)?;
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             terminal::terminal_spawn,
             terminal::terminal_write,
