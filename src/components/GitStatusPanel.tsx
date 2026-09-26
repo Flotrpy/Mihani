@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { DiffViewer } from "./DiffViewer";
+import { BranchSwitcher } from "./BranchSwitcher";
+import { CreatePullRequest } from "./CreatePullRequest";
 
 interface GitFileStatus {
   path: string;
@@ -30,6 +32,8 @@ export function GitStatusPanel({ path }: { path: string }) {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [diffFile, setDiffFile] = useState<string | null>(null);
+  const [showCreatePr, setShowCreatePr] = useState(false);
+  const [branchRefreshKey, setBranchRefreshKey] = useState(0);
 
   const refresh = () => {
     invoke<GitRepoStatus>("git_status", { path })
@@ -53,6 +57,7 @@ export function GitStatusPanel({ path }: { path: string }) {
     try {
       await action();
       refresh();
+      setBranchRefreshKey((k) => k + 1);
     } catch (err) {
       setActionError(String(err));
     } finally {
@@ -87,6 +92,7 @@ export function GitStatusPanel({ path }: { path: string }) {
           </span>
         )}
       </div>
+      <BranchSwitcher path={path} refreshKey={branchRefreshKey} />
       <ul className="git-file-list">
         {status.files.length === 0 && (
           <li className="git-file-empty">Working tree clean</li>
@@ -128,8 +134,18 @@ export function GitStatusPanel({ path }: { path: string }) {
             Push
           </button>
         </div>
+        <button className="git-create-pr-btn" onClick={() => setShowCreatePr(true)}>
+          Create Pull Request
+        </button>
         {actionError && <div className="git-action-error">{actionError}</div>}
       </div>
+      {showCreatePr && (
+        <CreatePullRequest
+          path={path}
+          branch={status.branch}
+          onClose={() => setShowCreatePr(false)}
+        />
+      )}
     </div>
   );
 }

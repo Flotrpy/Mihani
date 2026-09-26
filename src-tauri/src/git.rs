@@ -190,6 +190,77 @@ pub fn git_pull(path: String) -> Result<String, String> {
     run_git(&path, &["pull", "--ff-only"])
 }
 
+#[derive(Serialize)]
+pub struct GitBranch {
+    pub name: String,
+    pub is_head: bool,
+}
+
+#[tauri::command]
+pub fn git_list_branches(path: String) -> Result<Vec<GitBranch>, String> {
+    let repo = Repository::discover(&path).map_err(|e| e.to_string())?;
+    let branches = repo
+        .branches(Some(git2::BranchType::Local))
+        .map_err(|e| e.to_string())?;
+
+    branches
+        .map(|entry| {
+            let (branch, _) = entry.map_err(|e| e.to_string())?;
+            let name = branch
+                .name()
+                .map_err(|e| e.to_string())?
+                .ok_or("branch has no valid UTF-8 name")?
+                .to_string();
+            Ok(GitBranch {
+                name,
+                is_head: branch.is_head(),
+            })
+        })
+        .collect()
+}
+
+#[tauri::command]
+pub fn git_checkout_branch(path: String, branch: String) -> Result<(), String> {
+    run_git(&path, &["checkout", &branch]).map(|_| ())
+}
+
+#[tauri::command]
+pub fn git_create_branch(path: String, branch: String) -> Result<(), String> {
+    run_git(&path, &["checkout", "-b", &branch]).map(|_| ())
+}
+
+/// Parses the `origin` remote URL into (owner, repo) for GitHub API calls.
+/// Supports both `git@github.com:owner/repo.git` and
+/// `https://github.com/owner/repo.git` forms.
+#[tauri::command]
+pub fn git_remote_info(path: String) -> Result<(String, String), String> {
+    let repo = Repository::discover(&path).map_err(|e| e.to_string())?;
+    let remote = repo.find_remote("origin").map_err(|e| e.to_string())?;
+    let url = remote.url().ok_or("origin remote has no URL")?;
+    parse_github_remote(url).ok_or_else(|| format!("Not a recognizable GitHub remote: {url}"))
+}
+
+fn parse_github_remote(url: &str) -> Option<(String, String)> {
+    let trimmed = url.trim_end_matches(".git");
+    let path = if let Some(rest) = trimmed.strip_prefix("git@github.com:") {
+        rest
+    } else if let Some(rest) = trimmed.strip_prefix("https://github.com/") {
+        rest
+    } else if let Some(rest) = trimmed.strip_prefix("http://github.com/") {
+        rest
+    } else {
+        return None;
+    };
+    let mut parts = path.splitn(2, '/');
+    let owner = parts.next()?.to_string();
+    let repo = parts.next()?.to_string();
+    if owner.is_empty() || repo.is_empty() {
+        None
+    } else {
+        Some((owner, repo))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -264,6 +335,49 @@ mod tests {
         let diff = git_diff(dir.to_string_lossy().to_string(), "new.txt".into()).unwrap();
         assert!(diff.contains("+line one"));
         assert!(diff.contains("+line two"));
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn parses_ssh_github_remote() {
+        assert_eq!(
+            parse_github_remote("git@github.com:flotrpy/mihani.git"),
+            Some(("flotrpy".to_string(), "mihani".to_string()))
+        );
+    }
+
+    #[test]
+    fn parses_https_github_remote() {
+        assert_eq!(
+            parse_github_remote("https://github.com/flotrpy/mihani.git"),
+            Some(("flotrpy".to_string(), "mihani".to_string()))
+        );
+    }
+
+    #[test]
+    fn rejects_non_github_remote() {
+        assert_eq!(parse_github_remote("https://gitlab.com/a/b.git"), None);
+    }
+
+    #[test]
+    fn list_and_create_branch() {
+        let dir = tempfile_dir();
+        let repo = Repository::init(&dir).unwrap();
+        let mut config = repo.config().unwrap();
+        config.set_str("user.name", "Test").unwrap();
+        config.set_str("user.email", "test@example.com").unwrap();
+        std::fs::write(dir.join("README.md"), "hello").unwrap();
+        git_commit(dir.to_string_lossy().to_string(), "init".into()).unwrap();
+
+        let branches = git_list_branches(dir.to_string_lossy().to_string()).unwrap();
+        assert_eq!(branches.len(), 1);
+        assert!(branches[0].is_head);
+
+        git_create_branch(dir.to_string_lossy().to_string(), "feature-x".into()).unwrap();
+        let branches = git_list_branches(dir.to_string_lossy().to_string()).unwrap();
+        assert_eq!(branches.len(), 2);
+        assert!(branches.iter().any(|b| b.name == "feature-x" && b.is_head));
 
         std::fs::remove_dir_all(&dir).ok();
     }
