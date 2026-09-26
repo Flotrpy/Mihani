@@ -29,6 +29,7 @@ git2 = "0.19"
 uuid = { version = "1", features = ["v4"] }
 parking_lot = "0.12"
 anyhow = "1"
+keepawake = "0.6"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

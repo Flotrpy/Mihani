@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { useTheme } from "./hooks/useTheme";
 import { useWorkspace } from "./hooks/useWorkspace";
+import { useKeepAwake } from "./hooks/useKeepAwake";
 import { TerminalTabs, type TerminalTabsHandle } from "./components/TerminalTabs";
 import { GitStatusPanel } from "./components/GitStatusPanel";
 import { AgentLauncher, type AgentDefinition } from "./components/AgentLauncher";
@@ -9,6 +10,7 @@ import "./App.css";
 function App() {
   const { theme, toggleTheme } = useTheme();
   const { path, recents, loaded, openFolder, selectPath } = useWorkspace();
+  const { enabled: keepAwake, toggle: toggleKeepAwake } = useKeepAwake();
   const terminalTabsRef = useRef<TerminalTabsHandle>(null);
 
   const launchAgent = (agent: AgentDefinition) => {
@@ -22,9 +24,18 @@ function App() {
           <span className="app-brand-mark">M</span>
           <span className="app-brand-name">Mihani</span>
         </div>
-        <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
-          {theme === "dark" ? "☾" : "☀"}
-        </button>
+        <div className="app-titlebar-actions">
+          <button
+            className={`keepawake-toggle ${keepAwake ? "keepawake-toggle-active" : ""}`}
+            onClick={toggleKeepAwake}
+            title={keepAwake ? "Keep awake: on" : "Keep awake: off"}
+          >
+            {keepAwake ? "◉ Awake" : "○ Awake"}
+          </button>
+          <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
+            {theme === "dark" ? "☾" : "☀"}
+          </button>
+        </div>
       </header>
       <div className="app-body">
         <aside className="app-sidebar">

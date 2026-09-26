@@ -1,7 +1,9 @@
 mod agents;
 mod git;
+mod keepawake;
 mod terminal;
 
+use keepawake::KeepAwakeState;
 use terminal::TerminalRegistry;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -11,6 +13,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .manage(TerminalRegistry::default())
+        .manage(KeepAwakeState::default())
         .invoke_handler(tauri::generate_handler![
             terminal::terminal_spawn,
             terminal::terminal_write,
@@ -21,6 +24,9 @@ pub fn run() {
             git::git_push,
             git::git_pull,
             agents::list_agents,
+            keepawake::keepawake_enable,
+            keepawake::keepawake_disable,
+            keepawake::keepawake_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

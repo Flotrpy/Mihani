@@ -36,6 +36,30 @@
   font-size: 13px;
 }
 
+.app-titlebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
+.keepawake-toggle {
+  border: 1px solid var(--mh-border);
+  background: var(--mh-surface-raised);
+  color: var(--mh-text-muted);
+  border-radius: 8px;
+  height: 30px;
+  padding: 0 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.keepawake-toggle-active {
+  border-color: var(--mh-accent);
+  color: var(--mh-accent);
+  background: var(--mh-accent-soft);
+}
+
 .theme-toggle {
   -webkit-app-region: no-drag;
   border: 1px solid var(--mh-border);
