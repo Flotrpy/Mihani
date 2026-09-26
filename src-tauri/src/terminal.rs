@@ -7,16 +7,35 @@ use parking_lot::Mutex;
 use portable_pty::{native_pty_system, Child, CommandBuilder, MasterPty, PtySize};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
+use tokio::sync::broadcast;
 
 pub struct TerminalHandle {
     master: Box<dyn MasterPty + Send>,
     writer: Box<dyn Write + Send>,
     child: Box<dyn Child + Send + Sync>,
     kill_tx: Sender<()>,
+    pub title: Mutex<String>,
+    /// Broadcasts this session's output for remote viewers (see remote.rs);
+    /// has no effect on the local terminal, which uses the Tauri event above.
+    pub output_tx: broadcast::Sender<String>,
 }
 
 #[derive(Default)]
 pub struct TerminalRegistry(pub Mutex<HashMap<String, TerminalHandle>>);
+
+impl TerminalRegistry {
+    pub fn subscribe(&self, id: &str) -> Option<broadcast::Receiver<String>> {
+        self.0.lock().get(id).map(|h| h.output_tx.subscribe())
+    }
+
+    pub fn list_sessions(&self) -> Vec<(String, String)> {
+        self.0
+            .lock()
+            .iter()
+            .map(|(id, h)| (id.clone(), h.title.lock().clone()))
+            .collect()
+    }
+}
 
 #[derive(Clone, Serialize)]
 struct TerminalOutputEvent {
@@ -87,9 +106,11 @@ pub fn terminal_spawn(
     }
 
     let (kill_tx, kill_rx) = channel::<()>();
+    let (output_tx, _) = broadcast::channel(1024);
 
     let emit_app = app.clone();
     let emit_id = id.clone();
+    let broadcast_tx = output_tx.clone();
     thread::spawn(move || {
         let mut buf = [0u8; 4096];
         loop {
@@ -104,9 +125,10 @@ pub fn terminal_spawn(
                         "terminal://output",
                         TerminalOutputEvent {
                             id: emit_id.clone(),
-                            data,
+                            data: data.clone(),
                         },
                     );
+                    let _ = broadcast_tx.send(data);
                 }
                 Err(_) => break,
             }
@@ -127,6 +149,8 @@ pub fn terminal_spawn(
             writer,
             child,
             kill_tx,
+            title: Mutex::new(format!("Terminal {}", &id[..8])),
+            output_tx,
         },
     );
 
@@ -172,5 +196,16 @@ pub fn terminal_kill(registry: State<TerminalRegistry>, id: String) -> Result<()
         let _ = handle.kill_tx.send(());
         let _ = handle.child.kill();
     }
+    Ok(())
+}
+
+/// Lets the frontend sync a tab's display title into Rust state, so
+/// remote viewers (which have no access to frontend-only tab state) see
+/// something more useful than a raw session id.
+#[tauri::command]
+pub fn terminal_set_title(registry: State<TerminalRegistry>, id: String, title: String) -> Result<(), String> {
+    let map = registry.0.lock();
+    let handle = map.get(&id).ok_or("terminal not found")?;
+    *handle.title.lock() = title;
     Ok(())
 }

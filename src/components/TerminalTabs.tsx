@@ -189,6 +189,7 @@ export const TerminalTabs = forwardRef<TerminalTabsHandle, TerminalTabsProps>(
                 cwd={cwd}
                 theme={theme}
                 initialCommand={tab.initialCommand}
+                title={tab.title}
                 onExit={() => markExited(tab.id)}
               />
             </div>

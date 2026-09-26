@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { GitHubPanel } from "./GitHubPanel";
 import { AgentManager } from "./AgentManager";
+import { RemoteControlPanel } from "./RemoteControlPanel";
 
-type Tab = "github" | "agents";
+type Tab = "github" | "agents" | "remote";
 
 export function SettingsPanel({ onClose, initialTab }: { onClose: () => void; initialTab?: Tab }) {
   const [tab, setTab] = useState<Tab>(initialTab ?? "github");
@@ -29,10 +30,17 @@ export function SettingsPanel({ onClose, initialTab }: { onClose: () => void; in
           >
             Agents
           </button>
+          <button
+            className={`settings-tab ${tab === "remote" ? "settings-tab-active" : ""}`}
+            onClick={() => setTab("remote")}
+          >
+            Remote
+          </button>
         </div>
         <div className="settings-body">
           {tab === "github" && <GitHubPanel />}
           {tab === "agents" && <AgentManager />}
+          {tab === "remote" && <RemoteControlPanel />}
         </div>
       </div>
     </div>

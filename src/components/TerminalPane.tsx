@@ -20,6 +20,7 @@ interface TerminalPaneProps {
   cwd?: string;
   theme: "light" | "dark";
   initialCommand?: string;
+  title?: string;
   onExit?: () => void;
 }
 
@@ -38,7 +39,7 @@ const XTERM_THEMES = {
   },
 };
 
-export function TerminalPane({ cwd, theme, initialCommand, onExit }: TerminalPaneProps) {
+export function TerminalPane({ cwd, theme, initialCommand, title, onExit }: TerminalPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -46,6 +47,8 @@ export function TerminalPane({ cwd, theme, initialCommand, onExit }: TerminalPan
   const sessionIdRef = useRef<string | null>(null);
   const onExitRef = useRef(onExit);
   onExitRef.current = onExit;
+  const titleRef = useRef(title);
+  titleRef.current = title;
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -85,6 +88,7 @@ export function TerminalPane({ cwd, theme, initialCommand, onExit }: TerminalPan
       });
       if (disposed) return;
       sessionIdRef.current = id;
+      invoke("terminal_set_title", { id, title: titleRef.current ?? "Terminal" }).catch(() => {});
 
       unlistenOutput = await listen<TerminalOutputEvent>(
         "terminal://output",
@@ -160,6 +164,13 @@ export function TerminalPane({ cwd, theme, initialCommand, onExit }: TerminalPan
   useEffect(() => {
     if (searchOpen) searchInputRef.current?.focus();
   }, [searchOpen]);
+
+  useEffect(() => {
+    const id = sessionIdRef.current;
+    if (id && title) {
+      invoke("terminal_set_title", { id, title }).catch(() => {});
+    }
+  }, [title]);
 
   const findNext = () => searchAddonRef.current?.findNext(searchTerm);
   const findPrevious = () => searchAddonRef.current?.findPrevious(searchTerm);

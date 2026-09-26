@@ -3,10 +3,12 @@ mod app_menu;
 mod git;
 mod github;
 mod keepawake;
+mod remote;
 mod terminal;
 mod tray;
 
 use keepawake::KeepAwakeState;
+use remote::RemoteState;
 use tauri::WindowEvent;
 use terminal::TerminalRegistry;
 
@@ -20,6 +22,7 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .manage(TerminalRegistry::default())
         .manage(KeepAwakeState::default())
+        .manage(RemoteState::default())
         .setup(|app| {
             let menu = app_menu::build(app.handle())?;
             app.set_menu(menu)?;
@@ -39,6 +42,7 @@ pub fn run() {
             terminal::terminal_write,
             terminal::terminal_resize,
             terminal::terminal_kill,
+            terminal::terminal_set_title,
             git::git_status,
             git::git_diff,
             git::git_commit,
@@ -60,6 +64,10 @@ pub fn run() {
             github::github_clear_token,
             github::github_whoami,
             github::github_create_pull_request,
+            remote::remote_status,
+            remote::remote_enable,
+            remote::remote_disable,
+            remote::remote_regenerate_token,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
