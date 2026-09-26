@@ -469,6 +469,19 @@
   color: var(--mh-text-muted);
 }
 
+.agent-manager-auth {
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+.agent-auth-ok {
+  color: var(--mh-success);
+}
+
+.agent-auth-fail {
+  color: var(--mh-danger);
+}
+
 .branch-switcher {
   margin-bottom: 8px;
 }

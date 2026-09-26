@@ -7,6 +7,7 @@ export interface AgentDefinition {
   name: string;
   command: string;
   description: string;
+  auth_check_command?: string | null;
 }
 
 interface AgentLauncherProps {

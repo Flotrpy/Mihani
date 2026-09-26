@@ -35,6 +35,7 @@ keepawake = "0.6"
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "blocking"] }
 which = "7"
+wait-timeout = "0.2"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

@@ -35,6 +35,7 @@ pub fn run() {
             git::git_log,
             agents::list_agents,
             agents::check_agent_installed,
+            agents::check_agent_auth,
             keepawake::keepawake_enable,
             keepawake::keepawake_disable,
             keepawake::keepawake_status,
