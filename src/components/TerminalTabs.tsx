@@ -1,5 +1,6 @@
 import { forwardRef, useImperativeHandle, useState } from "react";
 import { TerminalPane } from "./TerminalPane";
+import { useNotify } from "../hooks/useNotify";
 
 interface TerminalTabsProps {
   cwd?: string;
@@ -25,6 +26,7 @@ export const TerminalTabs = forwardRef<TerminalTabsHandle, TerminalTabsProps>(
       { id: crypto.randomUUID(), title: `Terminal ${++tabCounter}`, exited: false },
     ]);
     const [activeId, setActiveId] = useState(() => tabs[0].id);
+    const notify = useNotify();
 
     const addTab = (title?: string, initialCommand?: string) => {
       const tab = {
@@ -52,7 +54,13 @@ export const TerminalTabs = forwardRef<TerminalTabsHandle, TerminalTabsProps>(
     };
 
     const markExited = (id: string) => {
-      setTabs((prev) => prev.map((t) => (t.id === id ? { ...t, exited: true } : t)));
+      setTabs((prev) => {
+        const tab = prev.find((t) => t.id === id);
+        if (tab && id !== activeId) {
+          notify("Mihani", `${tab.title} finished`);
+        }
+        return prev.map((t) => (t.id === id ? { ...t, exited: true } : t));
+      });
     };
 
     return (
