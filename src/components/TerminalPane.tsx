@@ -22,6 +22,9 @@ interface TerminalPaneProps {
   initialCommand?: string;
   title?: string;
   onExit?: () => void;
+  /** Attach to an already-running session (e.g. one started remotely)
+   * instead of spawning a new one. */
+  attachSessionId?: string;
 }
 
 const XTERM_THEMES = {
@@ -39,7 +42,14 @@ const XTERM_THEMES = {
   },
 };
 
-export function TerminalPane({ cwd, theme, initialCommand, title, onExit }: TerminalPaneProps) {
+export function TerminalPane({
+  cwd,
+  theme,
+  initialCommand,
+  title,
+  onExit,
+  attachSessionId,
+}: TerminalPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -80,15 +90,20 @@ export function TerminalPane({ cwd, theme, initialCommand, title, onExit }: Term
     let disposed = false;
 
     (async () => {
-      const id = await invoke<string>("terminal_spawn", {
-        cwd: cwd ?? null,
-        cols: term.cols,
-        rows: term.rows,
-        initialCommand: initialCommand ?? null,
-      });
+      const id = attachSessionId
+        ? attachSessionId
+        : await invoke<string>("terminal_spawn", {
+            cwd: cwd ?? null,
+            cols: term.cols,
+            rows: term.rows,
+            initialCommand: initialCommand ?? null,
+          });
       if (disposed) return;
       sessionIdRef.current = id;
-      invoke("terminal_set_title", { id, title: titleRef.current ?? "Terminal" }).catch(() => {});
+      if (!attachSessionId) {
+        invoke("terminal_set_title", { id, title: titleRef.current ?? "Terminal" }).catch(() => {});
+      }
+      invoke("terminal_resize", { id, cols: term.cols, rows: term.rows }).catch(() => {});
 
       unlistenOutput = await listen<TerminalOutputEvent>(
         "terminal://output",

@@ -43,6 +43,8 @@ pub fn run() {
             terminal::terminal_resize,
             terminal::terminal_kill,
             terminal::terminal_set_title,
+            terminal::terminal_cancel,
+            terminal::terminal_restart_cmd,
             git::git_status,
             git::git_diff,
             git::git_commit,
@@ -68,6 +70,7 @@ pub fn run() {
             remote::remote_enable,
             remote::remote_disable,
             remote::remote_regenerate_token,
+            remote::remote_set_context,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

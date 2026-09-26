@@ -1,24 +1,66 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { useTheme } from "./hooks/useTheme";
 import { useWorkspace } from "./hooks/useWorkspace";
 import { useKeepAwake } from "./hooks/useKeepAwake";
+import { useTestCommand } from "./hooks/useTestCommand";
 import { TerminalTabs, type TerminalTabsHandle } from "./components/TerminalTabs";
 import { GitStatusPanel } from "./components/GitStatusPanel";
 import { AgentLauncher, type AgentDefinition } from "./components/AgentLauncher";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { RemoteCommitRequest } from "./components/RemoteCommitRequest";
 import "./App.css";
+
+interface SessionStartedEvent {
+  id: string;
+  title: string;
+}
+
+interface CommitRequestEvent {
+  path: string;
+}
 
 function App() {
   const { theme, toggleTheme } = useTheme();
   const { path, recents, loaded, openFolder, selectPath } = useWorkspace();
   const { enabled: keepAwake, toggle: toggleKeepAwake } = useKeepAwake();
+  const { testCommand } = useTestCommand();
   const terminalTabsRef = useRef<TerminalTabsHandle>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [commitRequest, setCommitRequest] = useState<string | null>(null);
 
   const launchAgent = (agent: AgentDefinition) => {
     terminalTabsRef.current?.openTab(agent.name, agent.command);
   };
+
+  // Keep the remote server's fixed-action context in sync with the local
+  // workspace/test command — the remote client never supplies these itself.
+  useEffect(() => {
+    invoke("remote_set_context", {
+      workspacePath: path ?? null,
+      testCommand: testCommand ?? null,
+    }).catch(() => {});
+  }, [path, testCommand]);
+
+  useEffect(() => {
+    const unlistenPromise = listen<SessionStartedEvent>("remote://session-started", (event) => {
+      terminalTabsRef.current?.attachTab(event.payload.id, event.payload.title);
+    });
+    return () => {
+      unlistenPromise.then((unlisten) => unlisten());
+    };
+  }, []);
+
+  useEffect(() => {
+    const unlistenPromise = listen<CommitRequestEvent>("remote://commit-request", (event) => {
+      setCommitRequest(event.payload.path);
+    });
+    return () => {
+      unlistenPromise.then((unlisten) => unlisten());
+    };
+  }, []);
 
   return (
     <div className="app-shell">
@@ -84,6 +126,9 @@ function App() {
         </main>
       </div>
       {showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
+      {commitRequest && (
+        <RemoteCommitRequest path={commitRequest} onClose={() => setCommitRequest(null)} />
+      )}
     </div>
   );
 }

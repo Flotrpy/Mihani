@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useTestCommand } from "../hooks/useTestCommand";
 
 interface RemoteStatus {
   enabled: boolean;
@@ -8,16 +9,32 @@ interface RemoteStatus {
   lan: boolean;
 }
 
+const FIXED_ACTIONS = [
+  "Start a built-in agent",
+  "Cancel (Ctrl+C)",
+  "Restart session",
+  "Stop session",
+  "Run predefined tests",
+  "View terminal output",
+  "View git status / diffs",
+  "Request commit & push (still requires your local approval)",
+];
+
 export function RemoteControlPanel() {
   const [status, setStatus] = useState<RemoteStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { testCommand, setTestCommand } = useTestCommand();
+  const [testCommandInput, setTestCommandInput] = useState("");
 
   const refresh = () => {
     invoke<RemoteStatus>("remote_status").then(setStatus).catch(() => {});
   };
 
   useEffect(refresh, []);
+  useEffect(() => {
+    setTestCommandInput(testCommand ?? "");
+  }, [testCommand]);
 
   const enable = async (lan: boolean) => {
     setBusy(true);
@@ -51,10 +68,24 @@ export function RemoteControlPanel() {
   return (
     <div className="remote-panel">
       <p className="settings-hint">
-        View a running agent's terminal output from another device (read-only — this never accepts
-        remote keystrokes into your shell). Off by default; when on, it binds to this machine only
-        unless you allow LAN access.
+        Control and view a running agent from another device using a fixed set of actions only —
+        the remote client can never send freeform text or shell commands into a session. Off by
+        default; when on, it binds to this machine only unless you allow LAN access.
       </p>
+      <ul className="remote-action-list">
+        {FIXED_ACTIONS.map((action) => (
+          <li key={action}>{action}</li>
+        ))}
+      </ul>
+      <label className="pr-field">
+        <span>Test command (used by the remote "Run tests" action)</span>
+        <input
+          value={testCommandInput}
+          onChange={(e) => setTestCommandInput(e.target.value)}
+          onBlur={() => testCommandInput.trim() && setTestCommand(testCommandInput.trim())}
+          placeholder="e.g. npm test"
+        />
+      </label>
       {!status.enabled && (
         <div className="agent-add-actions">
           <button disabled={busy} onClick={() => enable(false)}>

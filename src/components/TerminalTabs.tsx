@@ -9,6 +9,7 @@ interface TerminalTabsProps {
 
 export interface TerminalTabsHandle {
   openTab: (title: string, initialCommand?: string) => void;
+  attachTab: (sessionId: string, title: string) => void;
 }
 
 interface TabState {
@@ -17,6 +18,7 @@ interface TabState {
   initialCommand?: string;
   exited: boolean;
   hidden: boolean;
+  attachSessionId?: string;
 }
 
 let tabCounter = 0;
@@ -44,8 +46,16 @@ export const TerminalTabs = forwardRef<TerminalTabsHandle, TerminalTabsProps>(
       setActiveId(tab.id);
     };
 
+    const attachTab = (sessionId: string, title: string) => {
+      setTabs((prev) => {
+        if (prev.some((t) => t.attachSessionId === sessionId)) return prev;
+        return [...prev, { id: crypto.randomUUID(), title, attachSessionId: sessionId, exited: false, hidden: false }];
+      });
+    };
+
     useImperativeHandle(ref, () => ({
       openTab: (title, initialCommand) => addTab(title, initialCommand),
+      attachTab: (sessionId, title) => attachTab(sessionId, title),
     }));
 
     const visibleTabs = tabs.filter((t) => !t.hidden);
@@ -190,6 +200,7 @@ export const TerminalTabs = forwardRef<TerminalTabsHandle, TerminalTabsProps>(
                 theme={theme}
                 initialCommand={tab.initialCommand}
                 title={tab.title}
+                attachSessionId={tab.attachSessionId}
                 onExit={() => markExited(tab.id)}
               />
             </div>
