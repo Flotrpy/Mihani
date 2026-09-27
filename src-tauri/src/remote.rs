@@ -1,8 +1,13 @@
-use std::net::SocketAddr;
+use std::collections::HashMap;
+use std::net::{IpAddr, SocketAddr};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 
+use axum::extract::connect_info::ConnectInfo;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
-use axum::extract::{Path, Query, State as AxumState};
-use axum::response::{Html, IntoResponse, Json};
+use axum::extract::{Path, Query, Request, State as AxumState};
+use axum::middleware::{self, Next};
+use axum::response::{Html, IntoResponse, Json, Response};
 use axum::routing::{get, post};
 use axum::Router;
 use parking_lot::Mutex;
@@ -119,11 +124,14 @@ pub async fn remote_enable(
     let router = build_router(app.clone(), token.clone());
 
     tauri::async_runtime::spawn(async move {
-        let _ = axum::serve(listener, router)
-            .with_graceful_shutdown(async {
-                let _ = shutdown_rx.await;
-            })
-            .await;
+        let _ = axum::serve(
+            listener,
+            router.into_make_service_with_connect_info::<SocketAddr>(),
+        )
+        .with_graceful_shutdown(async {
+            let _ = shutdown_rx.await;
+        })
+        .await;
     });
 
     let mut inner = state.0.lock();
@@ -144,10 +152,88 @@ pub fn remote_disable(state: tauri::State<RemoteState>) {
     inner.enabled = false;
 }
 
+const MAX_FAILURES_BEFORE_LOCKOUT: u32 = 10;
+const LOCKOUT_DURATION: Duration = Duration::from_secs(60);
+
+struct RateEntry {
+    failures: u32,
+    locked_until: Option<Instant>,
+}
+
+#[derive(Clone, Default)]
+struct RateLimiter(Arc<Mutex<HashMap<IpAddr, RateEntry>>>);
+
+impl RateLimiter {
+    fn is_locked(&self, ip: IpAddr) -> bool {
+        self.0
+            .lock()
+            .get(&ip)
+            .and_then(|e| e.locked_until)
+            .map(|until| Instant::now() < until)
+            .unwrap_or(false)
+    }
+
+    fn record_failure(&self, ip: IpAddr) {
+        let mut map = self.0.lock();
+        let entry = map.entry(ip).or_insert(RateEntry { failures: 0, locked_until: None });
+        entry.failures += 1;
+        if entry.failures >= MAX_FAILURES_BEFORE_LOCKOUT {
+            entry.locked_until = Some(Instant::now() + LOCKOUT_DURATION);
+            entry.failures = 0;
+        }
+    }
+
+    fn record_success(&self, ip: IpAddr) {
+        self.0.lock().remove(&ip);
+    }
+}
+
 #[derive(Clone)]
 struct RouterState {
     app: AppHandle,
     token: String,
+    rate_limiter: RateLimiter,
+}
+
+/// Single auth gate for every route except /health: checked here, before
+/// any handler runs, so a wrong token never reaches handler logic at all.
+/// Also tracks failures per source IP and locks out an IP for
+/// LOCKOUT_DURATION after MAX_FAILURES_BEFORE_LOCKOUT wrong attempts —
+/// defense in depth against brute-forcing the token, on top of the token
+/// space itself (32^8) already making that impractical.
+async fn auth_gate(
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    AxumState(state): AxumState<RouterState>,
+    request: Request,
+    next: Next,
+) -> Response {
+    if request.uri().path() == "/health" {
+        return next.run(request).await;
+    }
+
+    let ip = addr.ip();
+    if state.rate_limiter.is_locked(ip) {
+        return (
+            axum::http::StatusCode::TOO_MANY_REQUESTS,
+            "too many failed attempts; try again in a minute",
+        )
+            .into_response();
+    }
+
+    let token_ok = request
+        .uri()
+        .query()
+        .and_then(|q| q.split('&').find_map(|kv| kv.strip_prefix("token=")))
+        .map(|t| tokens_match(&state.token, t))
+        .unwrap_or(false);
+
+    if !token_ok {
+        state.rate_limiter.record_failure(ip);
+        return (axum::http::StatusCode::UNAUTHORIZED, "unauthorized").into_response();
+    }
+
+    state.rate_limiter.record_success(ip);
+    next.run(request).await
 }
 
 #[derive(Deserialize)]
@@ -156,7 +242,7 @@ struct AuthQuery {
 }
 
 fn build_router(app: AppHandle, token: String) -> Router {
-    let state = RouterState { app, token };
+    let state = RouterState { app, token, rate_limiter: RateLimiter::default() };
     Router::new()
         .route("/health", get(|| async { "ok" }))
         .route("/", get(index_page))
@@ -166,11 +252,8 @@ fn build_router(app: AppHandle, token: String) -> Router {
         .route("/action", post(action_handler))
         .route("/git/status", get(git_status_handler))
         .route("/git/diff", get(git_diff_handler))
+        .layer(middleware::from_fn_with_state(state.clone(), auth_gate))
         .with_state(state)
-}
-
-fn check_auth(state: &RouterState, token: &str) -> bool {
-    tokens_match(&state.token, token)
 }
 
 fn tokens_match(expected: &str, actual: &str) -> bool {
@@ -187,13 +270,7 @@ struct SessionInfo {
     title: String,
 }
 
-async fn list_sessions(
-    AxumState(state): AxumState<RouterState>,
-    Query(auth): Query<AuthQuery>,
-) -> impl IntoResponse {
-    if !check_auth(&state, &auth.token) {
-        return (axum::http::StatusCode::UNAUTHORIZED, Json(Vec::<SessionInfo>::new())).into_response();
-    }
+async fn list_sessions(AxumState(state): AxumState<RouterState>) -> impl IntoResponse {
     let registry = state.app.state::<TerminalRegistry>();
     let sessions: Vec<SessionInfo> = registry
         .list_sessions()
@@ -207,9 +284,6 @@ async fn index_page(
     AxumState(state): AxumState<RouterState>,
     Query(auth): Query<AuthQuery>,
 ) -> impl IntoResponse {
-    if !check_auth(&state, &auth.token) {
-        return Html("<h1>Unauthorized</h1>".to_string());
-    }
     let registry = state.app.state::<TerminalRegistry>();
     let items: String = registry
         .list_sessions()
@@ -335,13 +409,9 @@ async fn view_page(Path(id): Path<String>, Query(auth): Query<AuthQuery>) -> imp
 
 async fn ws_handler(
     Path(id): Path<String>,
-    Query(auth): Query<AuthQuery>,
     AxumState(state): AxumState<RouterState>,
     ws: WebSocketUpgrade,
 ) -> impl IntoResponse {
-    if !check_auth(&state, &auth.token) {
-        return axum::http::StatusCode::UNAUTHORIZED.into_response();
-    }
     ws.on_upgrade(move |socket| handle_socket(socket, state.app, id))
 }
 
@@ -397,14 +467,9 @@ enum RemoteAction {
 }
 
 async fn action_handler(
-    Query(auth): Query<AuthQuery>,
     AxumState(state): AxumState<RouterState>,
     Json(action): Json<RemoteAction>,
 ) -> impl IntoResponse {
-    if !check_auth(&state, &auth.token) {
-        return axum::http::StatusCode::UNAUTHORIZED.into_response();
-    }
-
     let app = state.app;
     match action {
         RemoteAction::Cancel { session_id } => {
@@ -491,13 +556,7 @@ fn spawn_and_announce(
     Ok(())
 }
 
-async fn git_status_handler(
-    Query(auth): Query<AuthQuery>,
-    AxumState(state): AxumState<RouterState>,
-) -> impl IntoResponse {
-    if !check_auth(&state, &auth.token) {
-        return axum::http::StatusCode::UNAUTHORIZED.into_response();
-    }
+async fn git_status_handler(AxumState(state): AxumState<RouterState>) -> impl IntoResponse {
     let path = state.app.state::<RemoteState>().0.lock().workspace_path.clone();
     let Some(path) = path else {
         return (axum::http::StatusCode::BAD_REQUEST, "no workspace open").into_response();
@@ -514,13 +573,9 @@ struct DiffQuery {
 }
 
 async fn git_diff_handler(
-    Query(auth): Query<AuthQuery>,
     Query(diff_query): Query<DiffQuery>,
     AxumState(state): AxumState<RouterState>,
 ) -> impl IntoResponse {
-    if !check_auth(&state, &auth.token) {
-        return axum::http::StatusCode::UNAUTHORIZED.into_response();
-    }
     let path = state.app.state::<RemoteState>().0.lock().workspace_path.clone();
     let Some(path) = path else {
         return (axum::http::StatusCode::BAD_REQUEST, "no workspace open").into_response();

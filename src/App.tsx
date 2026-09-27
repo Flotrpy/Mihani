@@ -24,7 +24,7 @@ interface CommitRequestEvent {
 
 function App() {
   const { theme, toggleTheme } = useTheme();
-  const { path, recents, loaded, openFolder, selectPath } = useWorkspace();
+  const { path, recents, loaded, openFolder, selectPath, removeRecent } = useWorkspace();
   const { enabled: keepAwake, toggle: toggleKeepAwake } = useKeepAwake();
   const { testCommand } = useTestCommand();
   const terminalTabsRef = useRef<TerminalTabsHandle>(null);
@@ -120,7 +120,17 @@ function App() {
               <ul className="workspace-recents">
                 {recents.map((recent) => (
                   <li key={recent} onClick={() => selectPath(recent)} title={recent}>
-                    {recent}
+                    <span className="workspace-recent-path">{recent}</span>
+                    <button
+                      className="workspace-recent-remove"
+                      aria-label={`Remove ${recent} from recent folders`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeRecent(recent);
+                      }}
+                    >
+                      ×
+                    </button>
                   </li>
                 ))}
               </ul>

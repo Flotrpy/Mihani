@@ -265,18 +265,42 @@
 }
 
 .workspace-recents li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px;
   border-radius: 6px;
   color: var(--mh-text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   cursor: pointer;
 }
 
 .workspace-recents li:hover {
   background: var(--mh-accent-soft);
   color: var(--mh-text);
+}
+
+.workspace-recent-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-recent-remove {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.workspace-recent-remove:hover {
+  opacity: 1;
+  color: var(--mh-danger);
 }
 
 .agent-launcher {

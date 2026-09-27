@@ -49,5 +49,14 @@ export function useWorkspace() {
     }
   }, [selectPath]);
 
-  return { path, recents, loaded, openFolder, selectPath };
+  const removeRecent = useCallback(async (target: string) => {
+    const store = await getStore();
+    setRecents((prev) => {
+      const next = prev.filter((p) => p !== target);
+      store.set(RECENT_KEY, next);
+      return next;
+    });
+  }, []);
+
+  return { path, recents, loaded, openFolder, selectPath, removeRecent };
 }
