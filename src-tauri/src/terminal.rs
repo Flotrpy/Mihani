@@ -4,7 +4,7 @@ use std::sync::mpsc::{channel, Sender};
 use std::thread;
 
 use parking_lot::Mutex;
-use portable_pty::{native_pty_system, Child, CommandBuilder, MasterPty, PtySize};
+use portable_pty::{native_pty_system, ChildKiller, CommandBuilder, MasterPty, PtySize};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 use tokio::sync::broadcast;
@@ -12,7 +12,12 @@ use tokio::sync::broadcast;
 pub struct TerminalHandle {
     master: Box<dyn MasterPty + Send>,
     writer: Box<dyn Write + Send>,
-    child: Box<dyn Child + Send + Sync>,
+    /// Only a killer, not the full Child: the Child itself is owned by a
+    /// dedicated reaper thread (see spawn_into) that blocks on wait() for
+    /// as long as the process runs, so it's reaped by the OS the instant it
+    /// exits — whether from kill() here or the shell exiting on its own —
+    /// instead of sitting as a zombie until Mihani itself quits.
+    killer: Box<dyn ChildKiller + Send + Sync>,
     kill_tx: Sender<()>,
     pub title: Mutex<String>,
     /// Broadcasts this session's output for remote viewers (see remote.rs);
@@ -95,8 +100,18 @@ pub(crate) fn spawn_into(
         cmd.cwd(dir);
     }
 
-    let child = pair.slave.spawn_command(cmd).map_err(|e| e.to_string())?;
+    let mut child = pair.slave.spawn_command(cmd).map_err(|e| e.to_string())?;
     drop(pair.slave);
+    let killer = child.clone_killer();
+
+    // Dedicated reaper: owns the Child and blocks on wait() until the
+    // process exits, so the OS can reclaim it immediately rather than it
+    // becoming a zombie. Runs independently of the output-reading thread
+    // below and of terminal_kill/terminal_restart, which only ever touch
+    // `killer`.
+    thread::spawn(move || {
+        let _ = child.wait();
+    });
 
     let mut reader = pair
         .master
@@ -150,7 +165,7 @@ pub(crate) fn spawn_into(
         TerminalHandle {
             master: pair.master,
             writer,
-            child,
+            killer,
             kill_tx,
             title: Mutex::new(title),
             output_tx,
@@ -214,7 +229,7 @@ pub fn terminal_kill(registry: State<TerminalRegistry>, id: String) -> Result<()
     let mut map = registry.0.lock();
     if let Some(mut handle) = map.remove(&id) {
         let _ = handle.kill_tx.send(());
-        let _ = handle.child.kill();
+        let _ = handle.killer.kill();
     }
     Ok(())
 }
@@ -287,7 +302,7 @@ pub fn terminal_restart(
         let mut map = registry.0.lock();
         let mut handle = map.remove(&id).ok_or("terminal not found")?;
         let _ = handle.kill_tx.send(());
-        let _ = handle.child.kill();
+        let _ = handle.killer.kill();
         let title = handle.title.lock().clone();
         (handle.spawn_cwd.take(), handle.spawn_initial_command.take(), title)
     };
