@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mihani — a desktop console for AI coding agents</title>
+  <meta name="description" content="Mihani orchestrates Codex, Claude Code, Cline, OpenHands, Gemini CLI, Aider, OpenCode, and Goose from one native desktop app for Windows and macOS." />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="nav">
+    <div class="nav-inner">
+      <a class="brand" href="#top">
+        <span class="brand-mark" aria-hidden="true"></span>
+        Mihani
+      </a>
+      <nav class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#agents">Agents</a>
+        <a href="#security">Security</a>
+        <a href="#download">Download</a>
+        <a href="https://github.com/Flotrpy/Mihani" target="_blank" rel="noopener">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <h1>One desktop console for every AI coding agent you run.</h1>
+      <p class="hero-sub">
+        Mihani combines a real terminal, live Git status, and multi-agent
+        orchestration into a single native app for Windows and macOS —
+        so you can launch, watch, and hand off between agents without
+        juggling a dozen terminal windows.
+      </p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#download">Download Mihani</a>
+        <a class="btn btn-ghost" href="https://github.com/Flotrpy/Mihani" target="_blank" rel="noopener">
+          View on GitHub
+        </a>
+      </div>
+    </section>
+
+    <section id="features" class="section">
+      <h2>Built for running agents against real projects</h2>
+      <div class="grid">
+        <article class="card">
+          <h3>Multi-tab terminal</h3>
+          <p>Real PTY sessions, tab rename, search, copy-on-select, and per-tab exit indicators.</p>
+        </article>
+        <article class="card">
+          <h3>Hidden background terminals</h3>
+          <p>Tuck a running session into the background and bring it back later — it keeps running even with the window closed.</p>
+        </article>
+        <article class="card">
+          <h3>Git, built in</h3>
+          <p>Status, per-file diff, selective staging, commit, discard, branch switching, and push/pull via libgit2 — no context switch required.</p>
+        </article>
+        <article class="card">
+          <h3>One-click pull requests</h3>
+          <p>A GitHub token stored in your OS keychain, never on disk, and one click to push and open a PR attributed to your own account.</p>
+        </article>
+        <article class="card">
+          <h3>Remote control</h3>
+          <p>Check on a session and trigger a fixed set of safe actions from another device — never freeform commands.</p>
+        </article>
+        <article class="card">
+          <h3>Native, not a wrapper</h3>
+          <p>A real system tray, native app menu, desktop notifications, and keep-awake — Tauri + Rust under the hood, not a bundled browser tab.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="agents" class="section">
+      <h2>Bring your own agent</h2>
+      <p class="section-sub">
+        Launch built-in adapters with install detection, or point Mihani at any
+        custom agent command you already use.
+      </p>
+      <ul class="agent-list">
+        <li>Claude Code</li>
+        <li>Codex CLI</li>
+        <li>Cline</li>
+        <li>OpenHands</li>
+        <li>Gemini CLI</li>
+        <li>Aider</li>
+        <li>OpenCode</li>
+        <li>Goose</li>
+      </ul>
+    </section>
+
+    <section id="security" class="section">
+      <h2>Security notes</h2>
+      <div class="grid">
+        <article class="card">
+          <h3>No freeform remote input</h3>
+          <p>
+            Remote control's action set is a closed enum — start/stop/pause/
+            restart, view output, view Git status/diff, run your configured
+            tests, or request a commit + push. There is no "send text" or
+            "run shell command" action, so a remote client can never execute
+            arbitrary input, by construction rather than by policy.
+          </p>
+        </article>
+        <article class="card">
+          <h3>Commits and pushes need local approval</h3>
+          <p>
+            A remote "request commit &amp; push" only opens Mihani's existing
+            commit UI on your machine for you to review and confirm — it
+            never commits or pushes on its own.
+          </p>
+        </article>
+        <article class="card">
+          <h3>Secrets stay in your OS keychain</h3>
+          <p>GitHub tokens are stored via your platform's native keychain, never written to app config or disk.</p>
+        </article>
+        <article class="card">
+          <h3>Custom agents require explicit trust</h3>
+          <p>
+            A user-defined agent command needs a "Trust &amp; Run" confirmation
+            before its first launch, and custom agents are never exposed to the
+            remote-control action set — only built-in agents can be started
+            remotely.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section id="download" class="section">
+      <h2>Download</h2>
+      <p class="section-sub">
+        Mihani ships through GitHub Releases. Windows shows an "unknown
+        publisher" warning and macOS requires right-click → Open on first
+        run — both expected for an unsigned build, not a sign of a problem.
+      </p>
+      <div id="download-status" class="download-status" aria-live="polite">Checking latest release…</div>
+      <div class="download-grid">
+        <div class="download-card" id="download-windows">
+          <h3>Windows</h3>
+          <p class="download-meta">NSIS / MSI installer</p>
+          <a class="btn btn-primary download-link" href="https://github.com/Flotrpy/Mihani/releases/latest" rel="noopener">
+            Download for Windows
+          </a>
+        </div>
+        <div class="download-card" id="download-macos">
+          <h3>macOS</h3>
+          <p class="download-meta">.dmg disk image</p>
+          <a class="btn btn-primary download-link" href="https://github.com/Flotrpy/Mihani/releases/latest" rel="noopener">
+            Download for macOS
+          </a>
+        </div>
+      </div>
+      <p class="all-releases">
+        <a href="https://github.com/Flotrpy/Mihani/releases" target="_blank" rel="noopener">See all releases and checksums →</a>
+      </p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <span>Mihani is open source on <a href="https://github.com/Flotrpy/Mihani" target="_blank" rel="noopener">GitHub</a>.</span>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
