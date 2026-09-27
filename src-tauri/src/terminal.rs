@@ -58,6 +58,25 @@ struct TerminalExitEvent {
     code: Option<i32>,
 }
 
+/// Splits `bytes` into (decoded valid prefix, undecoded remainder). The
+/// remainder is non-empty only when `bytes` ends with an incomplete
+/// multi-byte UTF-8 sequence (at most 3 bytes); genuinely invalid bytes
+/// (not just truncated) are lossily decoded instead, since buffering
+/// wouldn't fix real corruption anyway.
+fn split_valid_utf8(bytes: &[u8]) -> (String, Vec<u8>) {
+    match std::str::from_utf8(bytes) {
+        Ok(s) => (s.to_string(), Vec::new()),
+        Err(e) if e.error_len().is_none() => {
+            let valid_up_to = e.valid_up_to();
+            let valid = std::str::from_utf8(&bytes[..valid_up_to])
+                .expect("valid_up_to guarantees this prefix is valid UTF-8")
+                .to_string();
+            (valid, bytes[valid_up_to..].to_vec())
+        }
+        Err(_) => (String::from_utf8_lossy(bytes).into_owned(), Vec::new()),
+    }
+}
+
 fn home_dir() -> Option<String> {
     if cfg!(target_os = "windows") {
         std::env::var("USERPROFILE").ok()
@@ -143,6 +162,13 @@ pub(crate) fn spawn_into(
     let broadcast_tx = output_tx.clone();
     thread::spawn(move || {
         let mut buf = [0u8; 4096];
+        // Bytes read but not yet decoded because they end mid-UTF-8-sequence
+        // (a multi-byte character straddling a 4096-byte read boundary).
+        // Carried into the next read rather than lossily replaced, so a
+        // unicode symbol split across two reads doesn't render as a
+        // replacement character — common in CLI agent output (spinners,
+        // checkmarks, box-drawing).
+        let mut leftover: Vec<u8> = Vec::new();
         loop {
             if kill_rx.try_recv().is_ok() {
                 break;
@@ -150,7 +176,12 @@ pub(crate) fn spawn_into(
             match reader.read(&mut buf) {
                 Ok(0) => break,
                 Ok(n) => {
-                    let data = String::from_utf8_lossy(&buf[..n]).to_string();
+                    leftover.extend_from_slice(&buf[..n]);
+                    let (data, remainder) = split_valid_utf8(&leftover);
+                    leftover = remainder;
+                    if data.is_empty() {
+                        continue;
+                    }
                     let _ = emit_app.emit(
                         "terminal://output",
                         TerminalOutputEvent {
@@ -287,6 +318,51 @@ mod tests {
             Some(v) => unsafe { env::set_var("SHELL", v) },
             None => unsafe { env::remove_var("SHELL") },
         }
+    }
+
+    #[test]
+    fn split_valid_utf8_passes_through_ascii() {
+        let (data, remainder) = split_valid_utf8(b"hello world");
+        assert_eq!(data, "hello world");
+        assert!(remainder.is_empty());
+    }
+
+    #[test]
+    fn split_valid_utf8_holds_back_a_sequence_split_across_reads() {
+        // "✓" is U+2713, encoded as the 3 bytes [0xE2, 0x9C, 0x93]. Simulate
+        // a read that stopped after the first byte of that sequence.
+        let checkmark = "✓".as_bytes();
+        assert_eq!(checkmark.len(), 3);
+
+        let first_chunk = &checkmark[..1];
+        let (data, remainder) = split_valid_utf8(first_chunk);
+        assert_eq!(data, "");
+        assert_eq!(remainder, checkmark[..1].to_vec());
+
+        // Next read delivers the rest; prepend the held-back byte, as the
+        // real reader loop does.
+        let mut rejoined = remainder;
+        rejoined.extend_from_slice(&checkmark[1..]);
+        let (data, remainder) = split_valid_utf8(&rejoined);
+        assert_eq!(data, "✓");
+        assert!(remainder.is_empty());
+    }
+
+    #[test]
+    fn split_valid_utf8_decodes_text_before_a_split_character() {
+        let mut bytes = b"loading ".to_vec();
+        bytes.extend_from_slice(&"✓".as_bytes()[..2]); // incomplete trailing char
+        let (data, remainder) = split_valid_utf8(&bytes);
+        assert_eq!(data, "loading ");
+        assert_eq!(remainder.len(), 2);
+    }
+
+    #[test]
+    fn split_valid_utf8_falls_back_to_lossy_for_genuinely_invalid_bytes() {
+        let bytes = [b'a', 0xff, b'b'];
+        let (data, remainder) = split_valid_utf8(&bytes);
+        assert!(remainder.is_empty());
+        assert!(data.contains('a') && data.contains('b'));
     }
 
     #[test]
