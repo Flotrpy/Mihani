@@ -40,7 +40,7 @@
     ],
     "windows": {
       "nsis": {
-        "installMode": "perMachine",
+        "installMode": "currentUser",
         "languages": ["English"],
         "displayLanguageSelector": false
       }
