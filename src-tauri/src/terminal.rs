@@ -230,6 +230,39 @@ pub fn terminal_set_title(registry: State<TerminalRegistry>, id: String, title: 
     Ok(())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+
+    // Combined into one test (rather than two) because both mutate the
+    // process-global SHELL env var, which would race under cargo test's
+    // default parallel execution otherwise. Exercises the non-Windows
+    // branch of default_shell(), shared by macOS and Linux (login shell
+    // via $SHELL) — this covers macOS's actual runtime behavior even
+    // though CI runs it on whatever OS the job happens to be.
+    #[test]
+    #[cfg(not(target_os = "windows"))]
+    fn default_shell_on_unix() {
+        let original = env::var("SHELL").ok();
+
+        unsafe { env::set_var("SHELL", "/bin/zsh") };
+        let (shell, args) = default_shell();
+        assert_eq!(shell, "/bin/zsh");
+        assert_eq!(args, vec!["-l".to_string()]);
+
+        unsafe { env::remove_var("SHELL") };
+        let (shell, args) = default_shell();
+        assert_eq!(shell, "/bin/bash");
+        assert_eq!(args, vec!["-l".to_string()]);
+
+        match original {
+            Some(v) => unsafe { env::set_var("SHELL", v) },
+            None => unsafe { env::remove_var("SHELL") },
+        }
+    }
+}
+
 /// Sends Ctrl+C (a single fixed control byte, not arbitrary input) to
 /// interrupt whatever is currently running in the session.
 #[tauri::command]
