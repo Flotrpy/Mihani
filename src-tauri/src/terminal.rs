@@ -58,6 +58,14 @@ struct TerminalExitEvent {
     code: Option<i32>,
 }
 
+fn home_dir() -> Option<String> {
+    if cfg!(target_os = "windows") {
+        std::env::var("USERPROFILE").ok()
+    } else {
+        std::env::var("HOME").ok()
+    }
+}
+
 fn default_shell() -> (String, Vec<String>) {
     if cfg!(target_os = "windows") {
         (
@@ -96,7 +104,11 @@ pub(crate) fn spawn_into(
     let (shell, args) = default_shell();
     let mut cmd = CommandBuilder::new(shell);
     cmd.args(args);
-    if let Some(dir) = &cwd {
+    // Without an explicit cwd, don't just inherit Mihani's own process cwd:
+    // a macOS .app launched from Finder/Dock (rather than a terminal) often
+    // starts with cwd "/", which would put a fresh shell somewhere useless
+    // and surprising. Fall back to the user's home directory instead.
+    if let Some(dir) = cwd.clone().or_else(home_dir) {
         cmd.cwd(dir);
     }
 
@@ -274,6 +286,23 @@ mod tests {
         match original {
             Some(v) => unsafe { env::set_var("SHELL", v) },
             None => unsafe { env::remove_var("SHELL") },
+        }
+    }
+
+    #[test]
+    #[cfg(not(target_os = "windows"))]
+    fn home_dir_reads_home_env_var() {
+        let original = env::var("HOME").ok();
+
+        unsafe { env::set_var("HOME", "/Users/example") };
+        assert_eq!(home_dir(), Some("/Users/example".to_string()));
+
+        unsafe { env::remove_var("HOME") };
+        assert_eq!(home_dir(), None);
+
+        match original {
+            Some(v) => unsafe { env::set_var("HOME", v) },
+            None => unsafe { env::remove_var("HOME") },
         }
     }
 }
