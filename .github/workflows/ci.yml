@@ -19,6 +19,7 @@ concurrency:
 jobs:
   version-consistency:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - name: Verify package.json, Cargo.toml, and tauri.conf.json agree on version
@@ -36,6 +37,7 @@ jobs:
 
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -51,6 +53,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - if: matrix.os == 'ubuntu-latest'
@@ -76,6 +79,7 @@ jobs:
   # of only being discovered by a user's first install attempt.
   windows-installer:
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -102,6 +106,7 @@ jobs:
   # not an oversight.
   macos-installer:
     runs-on: macos-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
