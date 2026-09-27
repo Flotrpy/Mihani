@@ -12,6 +12,23 @@ export default defineConfig(() => ({
   //
   // 1. prevent Vite from obscuring rust errors
   clearScreen: false,
+  build: {
+    rollupOptions: {
+      output: {
+        // Desktop app: assets load from local disk, not a network, so this
+        // is about parallel parsing and cache reuse across rebuilds rather
+        // than load latency. Splitting the large, rarely-changing terminal
+        // library out of the app bundle means editing app code doesn't
+        // invalidate xterm's cache entry.
+        manualChunks(id: string) {
+          if (id.includes("@xterm")) return "xterm";
+          if (id.includes("node_modules/react") || id.includes("node_modules/react-dom")) {
+            return "vendor";
+          }
+        },
+      },
+    },
+  },
   // 2. tauri expects a fixed port, fail if that port is not available
   server: {
     port: 1420,
