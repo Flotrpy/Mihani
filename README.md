@@ -3,7 +3,11 @@
 Mihani is a desktop console for running and coordinating multiple AI coding
 agents against real projects. It combines an integrated terminal, Git
 workflow, agent orchestration, and optional remote control into a single
-native app for Windows and macOS.
+native app for **Windows**.
+
+Mihani is not code-signed. Windows SmartScreen will show an "unknown
+publisher" warning on first run ("More info" → "Run anyway") — this is
+expected and not a sign of a problem.
 
 ## Features
 
@@ -46,8 +50,11 @@ native app for Windows and macOS.
 
 ## Development
 
-Prerequisites: Node.js 20+, Rust (stable), and the platform prerequisites for
-Tauri (see https://tauri.app/start/prerequisites/).
+Prerequisites: Node.js 20+, Rust (stable), and the Windows prerequisites for
+Tauri (see https://tauri.app/start/prerequisites/#windows). Development can
+happen on Linux/macOS too (the frontend and most of the backend are portable),
+but the shipped bundle targets Windows only (NSIS/MSI) and platform-specific
+code (tray, keychain, keep-awake) is only exercised for real on Windows.
 
 ```bash
 npm install
@@ -59,6 +66,10 @@ Run the Rust test suite:
 ```bash
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
+
+CI builds a real Windows installer (NSIS `.exe` and `.msi`) on every push via
+the `windows-installer` job and uploads it as a workflow artifact, so a
+working installer is always available without a local Windows machine.
 
 ## Project layout
 

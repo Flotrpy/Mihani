@@ -25,17 +25,16 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis", "msi"],
     "publisher": "Mihani",
     "copyright": "Copyright © Mihani contributors",
     "category": "DeveloperTool",
     "shortDescription": "A desktop console for running and coordinating AI coding agents.",
-    "longDescription": "Mihani combines an integrated terminal, live Git status, and multi-agent orchestration into a single native desktop app for Windows and macOS.",
+    "longDescription": "Mihani combines an integrated terminal, live Git status, and multi-agent orchestration into a single native desktop app for Windows.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
-      "icons/icon.icns",
       "icons/icon.ico"
     ],
     "windows": {
@@ -43,16 +42,6 @@
         "installMode": "perMachine",
         "languages": ["English"],
         "displayLanguageSelector": false
-      }
-    },
-    "macOS": {
-      "minimumSystemVersion": "10.15",
-      "entitlements": "entitlements.plist",
-      "hardenedRuntime": true
-    },
-    "linux": {
-      "deb": {
-        "depends": []
       }
     }
   }
