@@ -100,6 +100,11 @@ fn default_shell() -> (String, Vec<String>) {
 /// Spawns a PTY running the login shell and inserts it into the registry
 /// under `id` (which may be freshly generated or, for a restart, reused so
 /// callers don't have to track a new session id).
+// Each parameter is an independent, required piece of spawn configuration
+// (not a group that wants its own type), and this is called from exactly
+// two places (terminal_spawn, remote::spawn_and_announce), so a params
+// struct would add indirection without a real second caller shape to serve.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn spawn_into(
     app: &AppHandle,
     registry: &TerminalRegistry,
@@ -291,6 +296,7 @@ pub fn terminal_set_title(registry: State<TerminalRegistry>, id: String, title: 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(not(target_os = "windows"))]
     use std::env;
 
     // Combined into one test (rather than two) because both mutate the

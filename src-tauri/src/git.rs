@@ -297,15 +297,10 @@ pub fn git_remote_info(path: String) -> Result<(String, String), String> {
 
 fn parse_github_remote(url: &str) -> Option<(String, String)> {
     let trimmed = url.trim_end_matches(".git");
-    let path = if let Some(rest) = trimmed.strip_prefix("git@github.com:") {
-        rest
-    } else if let Some(rest) = trimmed.strip_prefix("https://github.com/") {
-        rest
-    } else if let Some(rest) = trimmed.strip_prefix("http://github.com/") {
-        rest
-    } else {
-        return None;
-    };
+    let path = trimmed
+        .strip_prefix("git@github.com:")
+        .or_else(|| trimmed.strip_prefix("https://github.com/"))
+        .or_else(|| trimmed.strip_prefix("http://github.com/"))?;
     let mut parts = path.splitn(2, '/');
     let owner = parts.next()?.to_string();
     let repo = parts.next()?.to_string();
