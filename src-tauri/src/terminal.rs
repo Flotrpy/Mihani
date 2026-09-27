@@ -296,6 +296,7 @@ pub fn terminal_set_title(registry: State<TerminalRegistry>, id: String, title: 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(not(target_os = "windows"))]
     use std::env;
 
     // Combined into one test (rather than two) because both mutate the
