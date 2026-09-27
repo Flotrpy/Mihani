@@ -424,7 +424,6 @@ async fn handle_socket(mut socket: WebSocket, app: AppHandle, id: String) {
             return;
         }
     };
-    drop(registry);
 
     // View-only: this loop only ever sends terminal output to the client.
     // Any inbound message from the client is ignored — this websocket is
