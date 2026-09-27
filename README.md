@@ -79,6 +79,14 @@ built by CI. Signing (Windows Authenticode, Apple Developer ID + notarization)
 is planned but not a blocker for this release — the build is already
 structured so it can be added later without changing the packaging targets.
 
+Cutting a release: bump the version in `package.json`, `src-tauri/Cargo.toml`,
+and `src-tauri/tauri.conf.json` together (CI's `version-consistency` check
+fails the build if they drift), then push a `vX.Y.Z` tag matching that
+version. `.github/workflows/release.yml` builds the Windows and macOS
+installers, generates SHA256 checksums, and publishes them as a GitHub
+Release — the tag is rejected before any build starts if it doesn't match
+`package.json`'s version.
+
 ## Project layout
 
 ```
