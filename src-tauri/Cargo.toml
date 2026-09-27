@@ -42,9 +42,13 @@ rand = "0.9"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
+#
+# panic is intentionally left at its "unwind" default (not "abort"): the
+# tray icon setup in lib.rs relies on catch_unwind to recover from a
+# missing libayatana-appindicator3 on some Linux systems without taking
+# the whole app down, which requires unwinding to work in release builds too.
 [profile.release]
 codegen-units = 1
 lto = true
 opt-level = 3
-panic = "abort"
 strip = true

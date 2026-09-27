@@ -26,7 +26,25 @@ pub fn run() {
         .setup(|app| {
             let menu = app_menu::build(app.handle())?;
             app.set_menu(menu)?;
-            tray::build(app.handle())?;
+
+            // On Linux, creating the tray icon dlopen()s libayatana-appindicator3
+            // (or the older libappindicator3) and panics — rather than returning
+            // an Err — if neither is installed on the system. That's a real gap
+            // on minimal desktop environments, so don't let it take the whole
+            // app down: the tray icon is a convenience, not a requirement.
+            let handle = app.handle().clone();
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
+                tray::build(&handle)
+            }));
+            if let Err(panic) = result {
+                let message = panic
+                    .downcast_ref::<String>()
+                    .cloned()
+                    .or_else(|| panic.downcast_ref::<&str>().map(|s| s.to_string()))
+                    .unwrap_or_else(|| "unknown panic".to_string());
+                eprintln!("Mihani: tray icon unavailable, continuing without it: {message}");
+            }
+
             Ok(())
         })
         .on_window_event(|window, event| {
