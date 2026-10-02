@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{channel, Sender};
+use std::sync::Arc;
 use std::thread;
 
 use parking_lot::Mutex;
@@ -19,6 +21,10 @@ pub struct TerminalHandle {
     /// instead of sitting as a zombie until Mihani itself quits.
     killer: Box<dyn ChildKiller + Send + Sync>,
     kill_tx: Sender<()>,
+    /// Set by terminal_restart before killing the old process, so its
+    /// reader thread doesn't emit `terminal://exit` for an id that has
+    /// already been respawned (which would mark the live tab as exited).
+    suppress_exit: Arc<AtomicBool>,
     pub title: Mutex<String>,
     /// Broadcasts this session's output for remote viewers (see remote.rs);
     /// has no effect on the local terminal, which uses the Tauri event above.
@@ -165,6 +171,8 @@ pub(crate) fn spawn_into(
     let emit_app = app.clone();
     let emit_id = id.clone();
     let broadcast_tx = output_tx.clone();
+    let suppress_exit = Arc::new(AtomicBool::new(false));
+    let thread_suppress_exit = suppress_exit.clone();
     thread::spawn(move || {
         let mut buf = [0u8; 4096];
         // Bytes read but not yet decoded because they end mid-UTF-8-sequence
@@ -199,6 +207,9 @@ pub(crate) fn spawn_into(
                 Err(_) => break,
             }
         }
+        if thread_suppress_exit.load(Ordering::SeqCst) {
+            return;
+        }
         let _ = emit_app.emit(
             "terminal://exit",
             TerminalExitEvent {
@@ -215,6 +226,7 @@ pub(crate) fn spawn_into(
             writer,
             killer,
             kill_tx,
+            suppress_exit,
             title: Mutex::new(title),
             output_tx,
             spawn_cwd: cwd,
@@ -412,12 +424,19 @@ pub fn terminal_restart(
     let (cwd, initial_command, title) = {
         let mut map = registry.0.lock();
         let mut handle = map.remove(&id).ok_or("terminal not found")?;
+        handle.suppress_exit.store(true, Ordering::SeqCst);
         let _ = handle.kill_tx.send(());
         let _ = handle.killer.kill();
         let title = handle.title.lock().clone();
         (handle.spawn_cwd.take(), handle.spawn_initial_command.take(), title)
     };
-    spawn_into(app, registry, id, cwd, cols, rows, initial_command, title)
+    let result = spawn_into(app, registry, id.clone(), cwd, cols, rows, initial_command, title);
+    if result.is_err() {
+        // The old reader's exit was suppressed and no replacement exists,
+        // so report the exit here or the tab would look alive forever.
+        let _ = app.emit("terminal://exit", TerminalExitEvent { id, code: None });
+    }
+    result
 }
 
 #[tauri::command]
