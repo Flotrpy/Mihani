@@ -349,13 +349,28 @@ async fn index_page(
             const res = await fetch('/git/status?token={token}');
             if (!res.ok) {{ out.textContent = 'Error: ' + await res.text(); return; }}
             const status = await res.json();
-            let html = '<p>Branch: ' + status.branch + '</p><ul>';
-            for (const f of status.files) {{
-              html += '<li class="file" onclick="loadDiff(\'' + f.path.replace(/'/g, "\\'") + '\')">'
-                + '[' + f.status + '] ' + f.path + '</li>';
+            // Branch names and file paths come from the repository, so they
+            // are inserted as text nodes, never parsed as HTML.
+            out.replaceChildren();
+            if (!status.files.length) {{
+              const p = document.createElement('p');
+              p.textContent = 'Working tree clean';
+              out.appendChild(p);
+              return;
             }}
-            html += '</ul><pre id="diffOut"></pre>';
-            out.innerHTML = status.files.length ? html : '<p>Working tree clean</p>';
+            const branch = document.createElement('p');
+            branch.textContent = 'Branch: ' + status.branch;
+            const list = document.createElement('ul');
+            for (const f of status.files) {{
+              const li = document.createElement('li');
+              li.className = 'file';
+              li.textContent = '[' + f.status + '] ' + f.path;
+              li.addEventListener('click', () => loadDiff(f.path));
+              list.appendChild(li);
+            }}
+            const diff = document.createElement('pre');
+            diff.id = 'diffOut';
+            out.append(branch, list, diff);
           }}
           async function loadDiff(file) {{
             const res = await fetch('/git/diff?token={token}&file=' + encodeURIComponent(file));
@@ -369,7 +384,23 @@ async fn index_page(
     ))
 }
 
-async fn view_page(Path(id): Path<String>, Query(auth): Query<AuthQuery>) -> impl IntoResponse {
+async fn view_page(
+    Path(id): Path<String>,
+    AxumState(state): AxumState<RouterState>,
+    Query(auth): Query<AuthQuery>,
+) -> Response {
+    // `id` is interpolated into inline JS below, so only accept ids of
+    // sessions that actually exist (generated UUIDs) rather than echoing
+    // an arbitrary path segment back into the page.
+    let known = state
+        .app
+        .state::<TerminalRegistry>()
+        .list_sessions()
+        .iter()
+        .any(|(session_id, _)| *session_id == id);
+    if !known || !is_safe_session_id(&id) {
+        return (axum::http::StatusCode::NOT_FOUND, "session not found").into_response();
+    }
     let token = auth.token;
     Html(format!(
         r#"<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -405,6 +436,7 @@ async fn view_page(Path(id): Path<String>, Query(auth): Query<AuthQuery>) -> imp
         </script>
         </body></html>"#
     ))
+    .into_response()
 }
 
 async fn ws_handler(
@@ -586,6 +618,12 @@ async fn git_diff_handler(
     }
 }
 
+/// Session ids are generated UUIDs; anything outside that alphabet is
+/// rejected before being placed in a page.
+fn is_safe_session_id(id: &str) -> bool {
+    !id.is_empty() && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+}
+
 fn html_escape(s: &str) -> String {
     s.replace('&', "&amp;")
         .replace('<', "&lt;")
@@ -621,6 +659,14 @@ mod tests {
     #[test]
     fn html_escape_neutralizes_tags() {
         assert_eq!(html_escape("<script>"), "&lt;script&gt;");
+    }
+
+    #[test]
+    fn session_id_validation_rejects_script_injection() {
+        assert!(is_safe_session_id("3f2b6c1e-9a4d-4e8b-b1c2-0d9e8f7a6b5c"));
+        assert!(!is_safe_session_id(""));
+        assert!(!is_safe_session_id("x');alert(1);('"));
+        assert!(!is_safe_session_id("<script>"));
     }
 
     #[test]
