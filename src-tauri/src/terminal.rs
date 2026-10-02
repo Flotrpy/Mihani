@@ -430,7 +430,13 @@ pub fn terminal_restart(
         let title = handle.title.lock().clone();
         (handle.spawn_cwd.take(), handle.spawn_initial_command.take(), title)
     };
-    spawn_into(app, registry, id, cwd, cols, rows, initial_command, title)
+    let result = spawn_into(app, registry, id.clone(), cwd, cols, rows, initial_command, title);
+    if result.is_err() {
+        // The old reader's exit was suppressed and no replacement exists,
+        // so report the exit here or the tab would look alive forever.
+        let _ = app.emit("terminal://exit", TerminalExitEvent { id, code: None });
+    }
+    result
 }
 
 #[tauri::command]
