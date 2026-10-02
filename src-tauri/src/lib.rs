@@ -9,6 +9,8 @@ mod tray;
 
 use keepawake::KeepAwakeState;
 use remote::RemoteState;
+#[cfg(target_os = "macos")]
+use tauri::Manager;
 use tauri::WindowEvent;
 use terminal::TerminalRegistry;
 
@@ -90,6 +92,31 @@ pub fn run() {
             remote::remote_regenerate_token,
             remote::remote_set_context,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            // Closing the main window hides it instead of quitting (see the
+            // CloseRequested handler above), so background terminal sessions
+            // keep running. On macOS that leaves the app backgrounded with no
+            // visible window and no dock menu action of its own — clicking the
+            // dock icon sends Reopen, which the OS expects to bring a window
+            // back. Without handling it, the app would be effectively stuck
+            // with no way to reach it again short of quitting from the tray.
+            // Reopen only exists in tauri's RunEvent on macOS.
+            #[cfg(target_os = "macos")]
+            {
+                if let tauri::RunEvent::Reopen { has_visible_windows, .. } = event {
+                    if !has_visible_windows {
+                        if let Some(window) = app_handle.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                }
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                let _ = (app_handle, event);
+            }
+        });
 }
