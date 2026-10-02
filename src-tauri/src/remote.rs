@@ -456,7 +456,6 @@ async fn handle_socket(mut socket: WebSocket, app: AppHandle, id: String) {
             return;
         }
     };
-    drop(registry);
 
     // View-only: this loop only ever sends terminal output to the client.
     // Any inbound message from the client is ignored — this websocket is
@@ -678,10 +677,86 @@ mod tests {
         let run_tests: RemoteAction = serde_json::from_str(r#"{"action":"run_tests"}"#).unwrap();
         assert!(matches!(run_tests, RemoteAction::RunTests));
 
+        let stop: RemoteAction =
+            serde_json::from_str(r#"{"action":"stop","session_id":"abc"}"#).unwrap();
+        assert!(matches!(stop, RemoteAction::Stop { session_id } if session_id == "abc"));
+
+        let restart: RemoteAction =
+            serde_json::from_str(r#"{"action":"restart","session_id":"abc"}"#).unwrap();
+        assert!(matches!(restart, RemoteAction::Restart { session_id } if session_id == "abc"));
+
+        let start_agent: RemoteAction =
+            serde_json::from_str(r#"{"action":"start_agent","agent_id":"claude-code"}"#).unwrap();
+        assert!(
+            matches!(start_agent, RemoteAction::StartAgent { agent_id } if agent_id == "claude-code")
+        );
+
+        let commit_push: RemoteAction =
+            serde_json::from_str(r#"{"action":"request_commit_push"}"#).unwrap();
+        assert!(matches!(commit_push, RemoteAction::RequestCommitPush));
+
         // No "send_text" / "write" / freeform-input variant exists at all,
         // so it can't be deserialized even if a client tries to send one.
         let attempt: Result<RemoteAction, _> =
             serde_json::from_str(r#"{"action":"send_text","data":"rm -rf /"}"#);
         assert!(attempt.is_err());
+
+        // Nor can a caller invoke a real variant under a name that isn't its
+        // own fixed tag, or omit a field a variant requires.
+        let wrong_tag: Result<RemoteAction, _> =
+            serde_json::from_str(r#"{"action":"kill","session_id":"abc"}"#);
+        assert!(wrong_tag.is_err());
+
+        let missing_field: Result<RemoteAction, _> =
+            serde_json::from_str(r#"{"action":"cancel"}"#);
+        assert!(missing_field.is_err());
+    }
+
+    fn test_ip(last_octet: u8) -> IpAddr {
+        IpAddr::from([127, 0, 0, last_octet])
+    }
+
+    #[test]
+    fn fresh_ip_is_not_locked() {
+        let limiter = RateLimiter::default();
+        assert!(!limiter.is_locked(test_ip(1)));
+    }
+
+    #[test]
+    fn ip_locks_out_after_max_failures() {
+        let limiter = RateLimiter::default();
+        let ip = test_ip(2);
+        for _ in 0..MAX_FAILURES_BEFORE_LOCKOUT - 1 {
+            limiter.record_failure(ip);
+            assert!(!limiter.is_locked(ip), "should not lock out before the threshold");
+        }
+        limiter.record_failure(ip);
+        assert!(limiter.is_locked(ip), "should lock out at the threshold");
+    }
+
+    #[test]
+    fn failures_on_one_ip_do_not_lock_out_another() {
+        let limiter = RateLimiter::default();
+        let attacker = test_ip(3);
+        let bystander = test_ip(4);
+        for _ in 0..MAX_FAILURES_BEFORE_LOCKOUT {
+            limiter.record_failure(attacker);
+        }
+        assert!(limiter.is_locked(attacker));
+        assert!(!limiter.is_locked(bystander));
+    }
+
+    #[test]
+    fn success_clears_recorded_failures() {
+        let limiter = RateLimiter::default();
+        let ip = test_ip(5);
+        for _ in 0..MAX_FAILURES_BEFORE_LOCKOUT - 1 {
+            limiter.record_failure(ip);
+        }
+        limiter.record_success(ip);
+        // The failure count was reset by the success, so it takes a full
+        // fresh run of failures to lock out again, not just one more.
+        limiter.record_failure(ip);
+        assert!(!limiter.is_locked(ip));
     }
 }

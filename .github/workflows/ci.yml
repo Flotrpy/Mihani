@@ -6,14 +6,43 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Every push (including a rapid string of them to the same branch, which
+# this repo does a lot of) queues a full run, and the expensive jobs here
+# are real Windows/macOS installer builds that each take several minutes.
+# Without this, superseded runs on the same branch/PR keep running to
+# completion instead of being cancelled, burning CI minutes on installers
+# for commits nobody will look at.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  version-consistency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify package.json, Cargo.toml, and tauri.conf.json agree on version
+        run: |
+          PKG=$(node -p "require('./package.json').version")
+          TAURI=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          CARGO=$(sed -n 's/^version = "\(.*\)"/\1/p' src-tauri/Cargo.toml | head -1)
+          echo "package.json: $PKG"
+          echo "tauri.conf.json: $TAURI"
+          echo "Cargo.toml: $CARGO"
+          if [ "$PKG" != "$TAURI" ] || [ "$PKG" != "$CARGO" ]; then
+            echo "::error::Version mismatch across package.json ($PKG), tauri.conf.json ($TAURI), and Cargo.toml ($CARGO)"
+            exit 1
+          fi
+
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run build
@@ -23,8 +52,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - if: matrix.os == 'ubuntu-latest'
@@ -32,24 +62,28 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev librsvg2-dev libayatana-appindicator3-dev
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run build
       - run: cargo check --manifest-path src-tauri/Cargo.toml
+      - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
       - run: cargo test --manifest-path src-tauri/Cargo.toml
 
-  # Mihani ships for Windows only. This job produces the real NSIS/MSI
-  # installer on an actual Windows runner (not just cargo check/test), so
-  # a broken bundle config or Windows-only code path is caught in CI
-  # instead of only being discovered by a user's first install attempt.
+  # Mihani ships for Windows and macOS. This job produces the real NSIS/MSI
+  # installer on an actual Windows runner (not just cargo check/test), so a
+  # broken bundle config or Windows-only code path is caught in CI instead
+  # of only being discovered by a user's first install attempt.
   windows-installer:
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -58,7 +92,7 @@ jobs:
           workspaces: src-tauri
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run tauri build
@@ -68,4 +102,31 @@ jobs:
           path: |
             src-tauri/target/release/bundle/nsis/*.exe
             src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: error
+
+  # Same idea for macOS: a real .app + .dmg built on an actual macos-latest
+  # runner, not just compiled. Unsigned/unnotarized for this release (see
+  # README Distribution section) — that's a deliberate, documented choice,
+  # not an oversight.
+  macos-installer:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run tauri build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mihani-macos-installer
+          path: |
+            src-tauri/target/release/bundle/dmg/*.dmg
+            src-tauri/target/release/bundle/macos/*.app
           if-no-files-found: error
